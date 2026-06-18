@@ -1,0 +1,334 @@
+﻿<html>
+<head>
+    <title>Viewer</title>
+    <link href="viewer_main.css" rel="stylesheet" type="text/css" />
+    <style id="directionStyle"></style>
+</head>
+<body>
+    <div id="screenTest" style="width:100vw;height:100vh;visibility:hidden;z-index:-99"></div>
+
+    <div id="navSwitch" onclick="NavSwitch()"></div>
+    <div id="menu">
+
+        <div id="navSwitchDummy" style="width:10vw;background:transparent;">TOC</div>
+        <div style="border-right:solid 1px;">
+            <div><input id="fontSizeInput" style="width:3em" type="number" />px</div>
+            <div onclick="ApplyFontSize(document.getElementById('fontSizeInput').value)" style="cursor:pointer;background:white;font-size:0.7em">字号生效</div>
+        </div>
+        <div><div style="cursor:pointer;" onclick="Inspector()"><span id="string_inspector">检查</span></div></div>
+        <div>
+            <div style="top:3vh;line-height:1.2em;">
+                Theme:　<br /><select id="themeSelect" onchange="SetTheme()">
+                    <option value="default" selected>Default</option>
+                    <option value="warm">Warm</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+        </div>
+        <div><div style="cursor:pointer;" onclick="ImageQuickView()"><span id="string_viewillu">速览插图</span></div></div>
+        <div><div style="cursor:pointer;" onclick="BookInfo()"><span id="string_bookinfo">书籍信息</span></div></div>
+        <div><div style="cursor:pointer;" onclick="SearchService()"><span id="string_search">搜索</span></div></div>
+
+
+    </div>
+    <div id="sp_frame_general_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">Close</div><iframe id="sp_frame_general" class="sp_frame"></iframe></div>
+    <div id="sp_frame_search_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">Close</div><iframe id="sp_frame_search" class="sp_frame"></iframe></div>
+    <div id="nav" style=""></div>
+    <div id="mouseListener" style="position:fixed;z-index:1;width:100vw;height:100vh;left:0;top:0;"></div>
+    <div id="scrollBar_container" onmouseenter="ScrollBarMouseEnter(event)" onmouseleave="ScrollBarMouseLeave(event)" onmousemove="ScrollBarMouseMove(event)">
+        <div id="scrollBarChapterDisplay" class="scrollBarChapterDisplay"><div class="scrollBarChapterName"></div></div>
+    </div>
+    <div id="measure_container"><div></div><div></div></div>
+    <div id="context_menu"></div>
+
+    <script src="viewer_settings.js"></script>
+    <script src="viewer_control.js"></script>
+    <script src="viewer_footnote.js"></script>
+    <script src="viewer_function.js"></script>
+    <script src="viewer_measure.js"></script>
+    <script src="viewer_menu.js"></script>
+    <script src="viewer_nav.js"></script>
+    <script src="viewer_oncopy.js"></script>
+    <script src="viewer_scrollbar.js"></script>
+    <script src="viewer_sp_frame.js"></script>
+    <script src="viewer_strings.js"></script>
+    <script src="viewer_utils.js"></script>
+    <script>
+        var direction_rtl = new Object();
+        direction_rtl.GetParallelLength = function (e) { return e.offsetWidth; }
+        direction_rtl.SetParallelLength = function (e, px) { e.style.width = px + "px"; }
+        direction_rtl.GetElementPos = function (e, f) { return f.contentWindow.document.documentElement.scrollWidth - e.getBoundingClientRect().right; }
+        direction_rtl.GetWindowLength = function () { return window.innerWidth; }
+        direction_rtl.AdjustFrameSize = function (f) { f.width = f.contentWindow.document.documentElement.scrollWidth + "px"; console.log(f.width); }
+        direction_rtl.SetPosStyle = function (e) { e.style.right = e.pos + "px"; }
+        direction_rtl.GetEventParallel = function (e) { return e.target.offsetWidth - e.x; }
+        direction_rtl.GetEventParallelPercent = function (e) { return (e.target.offsetWidth - e.x) / e.target.offsetWidth; }
+        direction_rtl.SetParallelPositivePos = function (e, px) { e.style.right = px + "px"; }
+        direction_rtl.GetEffective = function (x, y) { return x; };
+        direction_rtl.GetDelta = function (d1, d2) { return d1 - d2; };
+        direction_rtl.KeyToDirection = function (k) {
+            switch (k) {
+                case "ArrowLeft": return -1;
+                case "ArrowUp": return 1;
+                case "ArrowRight": return 1;
+                case "ArrowDown": return -1;
+            }
+            return 0;
+        }
+        direction_rtl.style = "\
+iframe{height:90vh;top:2vh;}\
+#scrollBar_container{width: 100vw;height:7vh; left: 0; bottom: 0; margin: 0;}\
+#scrollBar{\
+width: 100vw; left: 0; bottom: 0; margin: 0;margin-top:2vh;\
+transform-origin: 50vw; transform: rotate(180deg); \
+}\
+#scrollBar::-webkit-slider-runnable-track{height:3vh;}\
+#scrollBar::-webkit-slider-thumb{width: 15px;height: 3vh;}\
+.scrollBarChapterDisplay{height:3vh;margin-top:2vh;}\
+.scrollBarChapterName{margin-top:-1.5em;}\
+#measure_container{position:fixed;width:100%;height:1vh;left:0;bottom:6.5vh;}\
+#measure_container>div{position:fixed;height:1vh;width:1vh;bottom:6vh;border-radius:0.3vh;}\
+.scrollBarChapterName{box-shadow: -0.1em -0.1em 0.3em -0.1em #808080, 0.05em -0.1em 0.3em -0.1em #808080;width: auto;display: inline-block;padding-left:0 0.2em 0 0.2em;}\
+";
+        direction_rtl.injectStyle = "body{height:100vh;min-width:66vh;} img, svg {max-height:100%;max-width:66vh;}";
+        var direction_default = new Object();
+        direction_default.GetParallelLength = function (e) { return e.offsetHeight; }
+        direction_default.SetParallelLength = function (e, px) { e.style.height = px + "px"; }
+        direction_default.GetElementPos = function (e, f) { return e.getBoundingClientRect().top; }
+        direction_default.GetWindowLength = function () { return window.innerHeight; }
+        direction_default.AdjustFrameSize = function (f) { f.height = f.contentWindow.document.documentElement.scrollHeight + "px"; }
+        direction_default.SetPosStyle = function (e) { e.style.top = e.pos + "px"; }
+        direction_default.GetEventParallel = function (e) { return e.y; }
+        direction_default.GetEventParallelPercent = function (e) { return (e.y) / window.innerHeight; }//limited usage
+        direction_default.SetParallelPositivePos = function (e, px) { e.style.top = px + "px"; }
+        direction_default.GetEffective = function (x, y) { return y; };
+        direction_default.GetDelta = function (d1, d2) { return d2 - d1; };
+        direction_default.KeyToDirection = function (k) {
+            switch (k) {
+                case "ArrowUp": return 1;
+                case "ArrowDown": return -1;
+            }
+            return 0;
+        }
+        direction_default.style = "\
+iframe{width:91vw;left:4.5vw;min-height:90vh;} \
+#scrollBar_container{width: 3vw;height:100vh; right: 0; bottom: 0; margin: 0;}\
+#scrollBar{\
+margin:0 0 0 3vw;\
+width:100vh;height:3vw;\
+transform-origin:top left;\
+transform: rotate(90deg);\
+}\
+#scrollBar::-webkit-slider-runnable-track{width:3vh;}\
+#scrollBar::-webkit-slider-thumb{width: 3vw;height: 3vh;}\
+.scrollBarChapterDisplay{width:3vh;}\
+.scrollBarChapterName{margin-left:-10em;width:10em;white-space:normal}\
+#measure_container{position:fixed;width:1vw;height:100%;right:3vw;}\
+#measure_container>div{position:fixed;height:1vh;width:1vw;right:2.5vw;border-radius:1vw;}\
+.scrollBarChapterName{box-shadow: -0.1em 0.1em 0.3em -0.1em #808080;}\
+";
+        direction_default.injectStyle = "body{width:100vw;padding-bottom:3vh;} img, svg {max-width:100%;max-height:100%;}";
+
+        ScreenTest();
+        var direction = direction_default;
+        var frameList = new Array();
+        var urlList;
+        var paged = false;
+        //////////Load/////////
+        function Init(_urlList, start = 0, posRate = 0, selector = "") {
+            document.direction = direction;
+            console.log("Init start=" + start + " pos=" + posRate + " selector=" + selector);
+
+            directionStyle.innerHTML = direction.style;
+            InitMeasure();
+
+            urlList = _urlList;
+
+            let page = CreateFrame(start, posRate, CheckLoad, false, true, selector);
+            frameList.push(page);
+        }
+        function LoadUserSettings(json) {
+            document.userSettings = json;
+            document.getElementById("fontSizeInput").value = json.bookFontSize;
+            document.getElementById("themeSelect").value = json.viewerTheme;
+            SetTheme();
+        }
+        ///↓Core Function///
+        function CreateFrame(urlIndex, pos, check = null, addSelfLength = false, isPosRate = false, selector = null) {
+            loading++;
+            console.log("Create Frame " + urlList[urlIndex] + (isPosRate ? " posRate:" : " pos:") + pos + " addSelf:" + addSelfLength + " selector=" + selector);
+            let page = document.createElement("iframe");
+            //private use
+            page.pos = pos;
+            page.urlIndex = urlIndex;
+            page.style.visibility = "hidden";
+            if (urlIndex == 0) page.firstFrame = true; else page.firstFrame = false;
+            if (urlIndex == urlList.length - 1) page.lastFrame = true; else page.lastFrame = false;
+
+            page.scrolling = "no";
+            page.frameBorder = "0";
+            page.src = urlList[urlIndex] + "?page";
+            direction.SetPosStyle(page);
+            page.onload = function () {
+                direction.AdjustFrameSize(page);
+                let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
+                let wm = bodyComputedStyle.getPropertyValue("writing-mode");
+                if (direction == direction_rtl && wm != "vertical-rl") {
+                    if (page.offsetHeight < page.contentDocument.documentElement.scrollHeight) {
+                        console.log("Need Pagebreak");
+                        //PageBreak_Rtl(page, page.contentDocument.documentElement.scrollHeight);
+                    }
+
+                }
+                if (addSelfLength) {
+                    page.pos = pos - direction.GetParallelLength(page);
+                    direction.SetPosStyle(page);
+                } else {
+                    if (isPosRate) {
+                        page.pos = -parseInt(pos * direction.GetParallelLength(page));
+                    } else {
+                        page.pos = pos;
+                    }
+                    direction.SetPosStyle(page);
+                }
+                if (selector) {
+                    let t = page.contentDocument.querySelector(selector);
+                    if (t) {
+                        let ele_pos = direction.GetElementPos(t, page);
+                        page.pos = -ele_pos + 10;
+                        direction.SetPosStyle(page);
+                    } else console.log('Query Failure:' + selector);
+                }
+                loading--;
+                page.style.visibility = "visible";
+                if (check != null) check();
+                //Must scroll once to update current frame
+                if (page.lastFrame) {
+                    Scroll(-1);
+                } else { Scroll(0); }
+                SetScrollBar();
+                page.onload = null;
+            }
+            document.body.appendChild(page);
+            return page;
+        }
+        function PageBreak_Rtl(frame, totelHeight) {
+            let body = frame.contentDocument.body;
+            let h = frame.offsetHeight;
+            let w = frame.offsetWidth;
+            frame.style.width = Math.ceil(totelHeight / h) * w + "px";
+            let style = frame.contentDocument.createElement("style");
+            style.innerHTML = "body>*{writing-mode:vertical-rl}";
+            frame.contentDocument.head.appendChild(style);
+        }
+        var currentFrame = null;
+        function GetBookPos() {
+            if (currentFrame == null) return "/0";
+            return "/" + currentFrame.urlIndex + "/" + Math.floor(currentFrame.pos) + "/" + (direction.GetParallelLength(currentFrame));
+        }
+        document.Scroll = Scroll;
+        function Scroll(px) {
+            if (frameList[0].firstFrame && px > 0) {
+                if (frameList[0].pos + px > 0) { px = - frameList[0].pos; }
+            }
+            let last = frameList[frameList.length - 1];
+            if (last.lastFrame && px < 0) {
+                if (last.pos + direction.GetParallelLength(last) + px < direction.GetWindowLength()) { px = direction.GetWindowLength() - last.pos - direction.GetParallelLength(last); }
+            }
+            currentFrame = frameList[0];
+            let lastPos = px + frameList[0].pos;
+            for (let i = 0; i < frameList.length; i++) {
+                let e = frameList[i];
+                e.pos = lastPos;
+                direction.SetPosStyle(e);
+                if (e.pos <= 0 && e.pos + direction.GetParallelLength(e) > 0) { currentFrame = e; }
+                lastPos = e.pos + direction.GetParallelLength(e);
+            }
+            if (!loading) CheckLoad();
+            SetScrollBar();
+            MeasureScroll(px);
+        }
+        var longScrollTimerHandle = null;
+        var longScrollRest = 0;
+        var longScrollDelta = 40;
+        function LongScroll(px) {
+            if (longScrollTimerHandle != null) { return; }
+            longScrollRest = px;
+            longScrollDelta = Math.abs(px) / 15;
+            longScrollTimerHandle = setInterval(function () {
+                if (longScrollRest > 0) {
+                    Scroll(longScrollDelta);
+                    longScrollRest -= longScrollDelta;
+                    if (longScrollRest <= 0) { clearInterval(longScrollTimerHandle); longScrollTimerHandle = null; longScrollRest = 0 }
+                }
+                else if (longScrollRest < 0) {
+                    Scroll(-longScrollDelta);
+                    longScrollRest += longScrollDelta;
+                    if (longScrollRest >= 0) { clearInterval(longScrollTimerHandle); longScrollTimerHandle = null; longScrollRest = 0 }
+                }
+
+            }, 25);
+        }
+        var loading = 0;
+        var offScreenDestoryDistance = 500;
+        var preLoadDistance = 500;
+        var checking = false;
+        function CheckLoad() {
+            if (checking) return;
+            checking = true;
+            CheckForward();
+            CheckBackward();
+            checking = false;
+        }
+        function CheckBackward() {
+            let first = frameList[0];
+            if (-first.pos < preLoadDistance) {
+                if (!first.firstFrame) {
+                    frameList.unshift(CreateFrame(first.urlIndex - 1, first.pos, CheckBackward, true));
+                }
+            }
+
+            if (first.pos + direction.GetParallelLength(first) < -offScreenDestoryDistance) {
+                first.parentNode.removeChild(first);
+                frameList.shift();
+            }
+        }
+        function CheckForward() {
+            let last = frameList[frameList.length - 1];
+            if (last.pos + direction.GetParallelLength(last) < direction.GetWindowLength() + preLoadDistance) {
+
+                if (!last.lastFrame) {
+                    frameList.push(CreateFrame(last.urlIndex + 1, last.pos + direction.GetParallelLength(last), CheckForward));
+                }
+            }
+
+            if (last.pos > direction.GetWindowLength() + offScreenDestoryDistance) {
+                last.parentNode.removeChild(last);
+                frameList.pop();
+                CheckLoad();
+            }
+        }
+
+
+        function GetCurrentChapterStartIndex() {
+            let i = currentFrame.urlIndex;
+            do {
+                if (contentChapterData[i] != "") break;
+                i--;
+            } while (i >= 0);
+            return i;
+        }
+        function GetNextChapterStartIndex() {
+            let i = currentFrame.urlIndex + 1;
+            while (i < contentChapterData.length - 1) {
+                if (contentChapterData[i] != "") break;
+                i++;
+            }
+            return i;
+        }
+
+    </script>
+
+</body>
+
+</html>

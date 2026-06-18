@@ -1,0 +1,29 @@
+﻿img, svg {
+    object-fit: contain;
+}
+
+body {
+    margin: 0 !important;
+    padding: 0;
+    font-family: serif;
+}
+
+aside {
+    display:none;
+}
+
+a:link {
+    color: #8b8b8b;
+}
+
+a:visited {
+    color: #5b5b5b;
+}
+
+a:hover {
+    color: #000000;
+}
+
+a:active {
+    color: #000000;
+}

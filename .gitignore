@@ -1,0 +1,7 @@
+.vs
+packages
+debug
+bin
+obj
+*.epub
+*.csproj.user
