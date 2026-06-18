@@ -1,7 +1,40 @@
 var contentLengthData;
 var contentChapterData;
 var scrollBar;
+var scrollBarDragging = false;
 var scrollBar_container = document.getElementById("scrollBar_container");
+var scrollJumpHandle = null;
+var scrollJumpValue = 0;
+function JumpByScrollBarValue(v) {
+    if (loading) {
+        setTimeout(function () { JumpByScrollBarValue(scrollJumpValue); }, 60);
+        return;
+    }
+    let s = 0;
+    for (let i = 0; i < contentLengthData.length; i++) {
+        s += contentLengthData[i];
+        if (s >= v) {
+            let rate = (v - s + contentLengthData[i]) / contentLengthData[i];
+            if (!paged && currentFrame != null && currentFrame.urlIndex == i) {
+                Scroll(-parseInt(rate * direction.GetParallelLength(currentFrame)) - currentFrame.pos);
+                return;
+            }
+            frameList.forEach(e => e.parentNode.removeChild(e));
+            frameList = new Array();
+            Init(urlList, i, rate);
+            return;
+        }
+    }
+    console.log("DEBUG:shouldnt be here");
+}
+function ScheduleScrollJump(v) {
+    scrollJumpValue = v;
+    if (scrollJumpHandle != null) return;
+    scrollJumpHandle = requestAnimationFrame(function () {
+        scrollJumpHandle = null;
+        JumpByScrollBarValue(scrollJumpValue);
+    });
+}
 function LoadScrollBar(arr, plain) {
     contentLengthData = arr;
     contentChapterData = plain;
@@ -15,23 +48,18 @@ function LoadScrollBar(arr, plain) {
     scrollBar.min = 0;
     scrollBar.max = total;
     scrollBar.step = 1;
+    scrollBar.onmousedown = function () { scrollBarDragging = true; };
+    scrollBar.onmouseup = function () { scrollBarDragging = false; };
+    scrollBar.ontouchstart = function () { scrollBarDragging = true; };
+    scrollBar.ontouchend = function () { scrollBarDragging = false; };
     scrollBar.oninput = function () {
+        scrollBarDragging = true;
+        ScheduleScrollJump(scrollBar.value);
     };
     scrollBar.onchange = function () {
+        scrollBarDragging = false;
         scrollBar.blur();
-        let v = scrollBar.value;
-        let s = 0;
-        for (let i = 0; i < contentLengthData.length; i++) {
-            s += contentLengthData[i];
-            if (s >= v) {
-                let rate = (v - s + contentLengthData[i]) / contentLengthData[i];
-                frameList.forEach(e => e.parentNode.removeChild(e));
-                frameList = new Array();
-                Init(urlList, i, rate);
-                return;
-            }
-        }
-        console.log("DEBUG:shouldnt be here");
+        JumpByScrollBarValue(scrollBar.value);
     };
     scrollBar_container.appendChild(scrollBar);
 
@@ -49,9 +77,9 @@ function SetScrollBar() {
         let i = 0;
         for (; i < currentFrame.urlIndex; i++)
             v += contentLengthData[i];
-        v += (-currentFrame.pos) * contentLengthData[i] / direction.GetParallelLength(currentFrame);//iÊÇurlIndex
+        v += (-currentFrame.pos) * contentLengthData[i] / direction.GetParallelLength(currentFrame);//iï¿½ï¿½urlIndex
     }
-    scrollBar.value = v;
+    if (!scrollBarDragging) scrollBar.value = v;
 }
 var scrollBarFadeHandle = null;
 var scrollBarChapterDisplay = document.getElementById("scrollBarChapterDisplay");
