@@ -55,6 +55,7 @@ document.addEventListener("touchend", function (e) { PD.OnFrameTouchEnd(); });
 document.addEventListener("touchmove", function (e) { PD.OnFrameTouchMove(e.touches[0].screenX, e.touches[0].screenY); });
 [].forEach.call(document.getElementsByTagName("img"), function (e) { e.src = e.src + "?" + PD.theme.name; });
 [].forEach.call(document.getElementsByTagName("image"), function (e) { e.setAttribute("xlink:href", e.getAttribute("xlink:href") + "?" + PD.theme.name); });
+<<<<<<< HEAD
 function FixImageOnlyPage() {
     let images = document.body.querySelectorAll("img");
     let svgs = document.body.querySelectorAll("svg");
@@ -63,6 +64,8 @@ function FixImageOnlyPage() {
     style.innerHTML = "html,body{width:100vw!important;height:100vh!important;margin:0!important;padding:0!important;overflow:hidden!important;writing-mode:horizontal-tb!important;-webkit-writing-mode:horizontal-tb!important;} body,body *{max-width:100vw!important;max-height:100vh!important;} body{display:flex!important;align-items:center!important;justify-content:center!important;} body div,body p,body h1{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;} body span:empty{display:none!important;} img,svg{width:auto!important;height:auto!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;}";
     document.head.appendChild(style);
 }
+=======
+>>>>>>> bfc026fa4ff028290e7f6ae3f46d4d3daf4b39ae
 function Href(e) {
     if (e.getAttribute("epub:type") == "noteref") {
         let noteid = e.href.split('#')[1];
