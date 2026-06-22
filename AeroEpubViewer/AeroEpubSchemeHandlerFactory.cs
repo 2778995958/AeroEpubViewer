@@ -134,6 +134,9 @@ namespace AeroEpubViewer
                             case "pos":
                                 ResizeManage.SetPara(args);
                                 return ResourceHandler.FromString("OK");
+                            case "readingpos":
+                                ResizeManage.SetReadingPara(uri.AbsolutePath.Substring("/app/readingpos/".Length));
+                                return ResourceHandler.FromString("OK");
                             case "bookfontsize":
                                 UserSettings.bookFontSize = int.Parse(args[1]);
                                 EpubViewer.chromium.LoadingStateChanged += EpubViewer.SendDataWhenLoad;
@@ -147,6 +150,14 @@ namespace AeroEpubViewer
                                 return ResourceHandler.FromString("OK");
                             case "theme":
                                 UserSettings.theme = args[1];
+                                return ResourceHandler.FromString("OK");
+                            case "readingmode":
+                                UserSettings.readingMode = args.Length > 1 && args[1].ToLower() == "true";
+                                UserSettings.WriteSettings();
+                                return ResourceHandler.FromString("OK");
+                            case "reload":
+                                EpubViewer.chromium.LoadingStateChanged += EpubViewer.SendDataWhenLoad;
+                                EpubViewer.chromium.Reload(true);
                                 return ResourceHandler.FromString("OK");
                             case "ImageQuickView":
                                 return ResourceHandler.FromString(SpecialPageService.ImageQuickView());

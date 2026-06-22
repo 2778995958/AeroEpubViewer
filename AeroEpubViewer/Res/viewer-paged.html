@@ -3,6 +3,8 @@
     <title>Viewer</title>
     <link href="viewer_main.css" rel="stylesheet" type="text/css" />
     <link href="viewer-paged.css" rel="stylesheet" type="text/css" />
+    <style id="directionStyle"></style>
+    <style id="spreadStyle"></style>
 </head>
 <body>
     <div id="screenTest" style="width:100vw;height:100vh;visibility:hidden;z-index:-99"></div>
@@ -24,6 +26,11 @@
                     <option value="dark">Dark</option>
                 </select>
             </div>
+        </div>
+        <div>
+            <label style="cursor:pointer;font-size:0.8em;">
+                <input id="readingModeInput" type="checkbox" onchange="SetReadingMode(this.checked)" />阅读模式
+            </label>
         </div>
         <div><div style="cursor:pointer;" onclick="ImageQuickView()"><span id="string_viewillu">速览插图</span></div></div>
         <div><div style="cursor:pointer;" onclick="BookInfo()"><span id="string_bookinfo">书籍信息</span></div></div>
@@ -51,6 +58,7 @@
     <script src="viewer_scrollbar.js"></script>
     <script src="viewer_sp_frame.js"></script>
     <script src="viewer_strings.js"></script>
+    <script src="viewer_reading_mode.js"></script>
     <script src="viewer_utils.js"></script>
     <script>
         var direction_rtl = new Object();
@@ -92,6 +100,10 @@
 ";
 
         ScreenTest();
+        var pagedSingleLeft = "3vw";
+        var pagedSingleWidth = "94vw";
+        var pagedDoubleWidth = "45vw";
+        var pagedDoubleRightLeft = "52vw";
         var paged = true;
         var direction = direction_default;
         var frameList = new Array();
@@ -103,7 +115,7 @@
             let e = document.getElementById("screenTest");
             if (e.offsetWidth / e.offsetHeight > 1.2) {
                 spreadCount = 2;
-                spreadStyle.innerHTML = "iframe.page{width:45vw;}";
+                spreadStyle.innerHTML = "iframe.page{width:" + pagedDoubleWidth + ";}";
             }
             document.direction = direction;
             console.log("Init start=" + start + " posRate=" + posRate + " selector=" + selector);
@@ -152,10 +164,10 @@
             if (spreadCount == 2) {
                 switch (pageSpread) {
                     case "left": break;
-                    case "right": page.style.left = "52vw"; break;
+                    case "right": page.style.left = pagedDoubleRightLeft; break;
                     case "center":
-                        page.style.left = "3vw";
-                        page.style.width = "94vw";
+                        page.style.left = pagedSingleLeft;
+                        page.style.width = pagedSingleWidth;
                         break;
                     default: console.warn("Unknown 'pageSpread': " + pageSpread);
                 }
@@ -177,21 +189,22 @@
                 }
                 let injectStyle = page.contentDocument.createElement("style");
                 let isImageOnlyPage = IsImageOnlyPage(page.contentDocument);
+                let vertical = IsVerticalWritingMode(wm);
                 let contentLength;
+                let pageLength;
                 if (isImageOnlyPage) {
                     injectStyle.innerHTML = "html,body{width:100vw!important;height:100vh!important;margin:0!important;padding:0!important;overflow:hidden!important;writing-mode:horizontal-tb!important;-webkit-writing-mode:horizontal-tb!important;} body,body *{box-sizing:border-box!important;max-width:none!important;max-height:none!important;} body{display:flex!important;align-items:center!important;justify-content:center!important;} body div,body p,body h1{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;} body span:empty{display:none!important;} img,svg{width:100%!important;height:100%!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;}";
-                    contentLength = page.scrollHeight;
+                    contentLength = vertical ? page.scrollWidth : page.scrollHeight;
+                    pageLength = vertical ? page.clientWidth : page.scrollHeight;
                 } else {
                     injectStyle.innerHTML = "img{max-height:100vh;max-width:100vw;}";
-                    contentLength = page.contentDocument.body.scrollHeight;
+                    contentLength = vertical ? Math.max(page.contentDocument.documentElement.scrollWidth, page.contentDocument.body.scrollWidth) : page.contentDocument.body.scrollHeight;
+                    pageLength = vertical ? page.clientWidth : page.scrollHeight;
                 }
-                let pageHeight = page.scrollHeight;
-                let preTotalPage = Math.ceil(contentLength / pageHeight - 0.1);
-                console.log("contentLength / pageHeight=" + contentLength / pageHeight);
-                injectStyle.innerHTML += "body{position:relative;height:100vh;width:" + preTotalPage + "00vw;column-count:" + preTotalPage + ";column-gap:0;}";
+                let preTotalPage = Math.ceil(contentLength / pageLength - 0.1);
+                console.log("contentLength / pageLength=" + contentLength / pageLength);
+                injectStyle.innerHTML += "body{position:relative;height:100vh;width:" + preTotalPage + "00vw;column-count:" + preTotalPage + ";column-gap:0;} ruby,rb,rt,rp,img,svg{break-inside:avoid;-webkit-column-break-inside:avoid;}";
                 page.contentDocument.head.appendChild(injectStyle);
-                //To-do：检测分页结果正确性
-                //
                 let totalPage = preTotalPage;
                 let pageNum = 0;
                 if (posType == "page") {
@@ -199,6 +212,7 @@
                     if (pageNum < 0) pageNum = totalPage + pageNum;
                 }
                 if (posType == "rate") pageNum = Math.floor(posValue * preTotalPage);
+                pageNum = Math.max(0, Math.min(totalPage - 1, pageNum));
                 injectStyle.innerHTML += "body{left:-" + pageNum + "00vw;}";
                 page.num = pageNum;
                 page.totalPage = totalPage;
@@ -211,6 +225,10 @@
             document.body.appendChild(page);
             return page;
         }
+        function IsVerticalWritingMode(wm) {
+            return wm && wm.indexOf("vertical") >= 0;
+        }
+
         function IsImageOnlyPage(doc) {
             let body = doc.body;
             let images = body.querySelectorAll("img");

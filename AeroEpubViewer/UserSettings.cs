@@ -19,6 +19,7 @@ namespace AeroEpubViewer
         public static string theme = "warm";
         public static string warmColor = "#ffe6a0";
         public static string viewMode = "flow";
+        public static bool readingMode = false;
 
         //font
         public static int bookFontSize = 18;
@@ -37,7 +38,8 @@ namespace AeroEpubViewer
             return "{" +
                 $"\"bookFontSize\":{bookFontSize}," +
                 $"\"viewerTheme\":\"{theme}\"," +
-                $"\"warmColor\":\"{warmColor}\""
+                $"\"warmColor\":\"{warmColor}\"," +
+                $"\"readingMode\":{readingMode.ToString().ToLower()}"
                 + "}";
         }
         public static void ReadSettings()
@@ -81,6 +83,9 @@ namespace AeroEpubViewer
                                 case "ViewMode":
                                     viewMode = para[1];
                                     break;
+                                case "ReadingMode":
+                                    bool.TryParse(para[1], out readingMode);
+                                    break;
                             }
                     }
             }
@@ -101,6 +106,11 @@ namespace AeroEpubViewer
         public static void WriteSettings()
         {
             if (!Directory.Exists(settingsPath)) Directory.CreateDirectory(settingsPath);
+            File.WriteAllText(generalSetting,
+                $"Theme,{theme}\r\n" +
+                $"WarmColor,{warmColor}\r\n" +
+                $"ViewMode,{viewMode}\r\n" +
+                $"ReadingMode,{readingMode}\r\n");
         }
         static string[] GetPara(string line)
         {

@@ -1,11 +1,17 @@
-﻿
+﻿:root {
+    --paged-side-margin: 3vw;
+    --paged-top-margin: 2vh;
+    --paged-height: 94vh;
+    --paged-width: 94vw;
+}
+
 iframe.page {
-    height: 94vh;
-    width: 94vw;
-    top: 2vh;
+    height: var(--paged-height);
+    width: var(--paged-width);
+    top: var(--paged-top-margin);
     position: fixed;
     overflow: hidden;
-    left: 3vw; /*May override by CreateFrame*/
+    left: var(--paged-side-margin); /*May override by CreateFrame*/
 }
 #scrollBar_container {
     width: 100vw;

@@ -183,6 +183,7 @@
     <EmbeddedResource Include="Res\viewer_nav.js" />
     <EmbeddedResource Include="Res\viewer_scrollbar.js" />
     <EmbeddedResource Include="Res\viewer_settings.js" />
+    <EmbeddedResource Include="Res\viewer_reading_mode.js" />
     <EmbeddedResource Include="Res\viewer_utils.js" />
     <EmbeddedResource Include="Res\viewer_sp_frame.js" />
     <EmbeddedResource Include="Res\image-quick-view.html" />

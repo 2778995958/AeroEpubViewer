@@ -109,6 +109,11 @@ namespace AeroEpubViewer
             lengthDataCmd = $"LoadScrollBar([{ lengthDataCmd.Substring(1)}],{new TocManager().GetPlainStructJSON()});";
             initCmd = string.Format("Init([{0}],{1},{2},\"\",[{3}]);", initCmd.Substring(1), ResizeManage.index, ResizeManage.percent, spreadDataCmd.Substring(1));
             chromium.ExecuteScriptAsync(userDataCmd + lengthDataCmd + initCmd);
+            if (ResizeManage.useReadingAnchor)
+            {
+                chromium.ExecuteScriptAsync("ReadingSetPendingAnchor", ResizeManage.readingAnchor);
+                ResizeManage.useReadingAnchor = false;
+            }
 
             if (Program.epub.toc != null)
             {

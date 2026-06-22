@@ -25,7 +25,10 @@ document.body.onmouseup = function (e) {
             return;
         }
 
-        if (PD.menuOn || PD.navOn) {
+        if (PD.HandleViewerMouseUp) {
+            let top = window.frameElement.getBoundingClientRect().top + e.clientY;
+            PD.HandleViewerMouseUp(top, e.button, null);
+        } else if (PD.menuOn || PD.navOn) {
             PD.MenuClose();
         } else {
             let top = window.frameElement.offsetTop + e.pageY;
@@ -40,11 +43,16 @@ document.body.onmouseup = function (e) {
         }
 
 };
+var readingContentPaddingX = "1.2em";
 var fontSizeStyle = document.createElement("style");
 fontSizeStyle.innerHTML = "html{font-size:" + PD.userSettings.bookFontSize + "px}";
 document.head.appendChild(fontSizeStyle);
 var style = document.createElement("style");
 style.innerHTML = PD.direction.injectStyle;
+if (PD.readingMode) {
+    let readingImageLimit = PD.direction == this.parent.direction_rtl ? "max-width:100vw!important;" : "max-height:100vh!important;";
+    style.innerHTML += "html,body{box-sizing:border-box!important;} body{padding-left:" + readingContentPaddingX + "!important;padding-right:" + readingContentPaddingX + "!important;} img,svg{max-width:calc(100% - " + readingContentPaddingX + " * 2)!important;" + readingImageLimit + "object-fit:contain!important;break-inside:avoid!important;page-break-inside:avoid!important;}";
+}
 document.head.appendChild(style);
 var themeStyle = document.createElement("style");
 themeStyle.innerHTML = PD.theme.frameStyle;

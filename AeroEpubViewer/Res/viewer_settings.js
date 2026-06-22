@@ -27,7 +27,11 @@ document.head.appendChild(spreadStyle);
 
 function LoadUserSettings(json) {
     document.userSettings = json;
+    document.readingMode = !!json.readingMode;
     document.getElementById("fontSizeInput").value = json.bookFontSize;
     document.getElementById("themeSelect").value = json.viewerTheme;
+    let readingModeInput = document.getElementById("readingModeInput");
+    if (readingModeInput) readingModeInput.checked = document.readingMode;
     SetTheme();
+    if (document.readingMode && !paged && typeof ReadingTryRestorePendingAnchor == "function") setTimeout(ReadingTryRestorePendingAnchor, 0);
 }

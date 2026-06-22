@@ -22,6 +22,21 @@ function ApplyFontSize(a) {
     AppCall("aeroepub://domain/app/pos" + GetBookPos());
     AppCall("aeroepub://domain/app/bookfontsize/" + document.userSettings.bookFontSize);
 }
+function SetReadingMode(enabled) {
+    enabled = !!enabled;
+    document.readingMode = enabled;
+    if (document.userSettings) document.userSettings.readingMode = enabled;
+    let posUrl = (!paged && enabled && typeof ReadingSerializeCurrentAnchor == "function") ?
+        "aeroepub://domain/app/readingpos/" + ReadingSerializeCurrentAnchor() :
+        "aeroepub://domain/app/pos" + GetBookPos();
+    let posReq = new XMLHttpRequest();
+    posReq.open("GET", posUrl, false);
+    posReq.send();
+    let modeReq = new XMLHttpRequest();
+    modeReq.open("GET", "aeroepub://domain/app/readingmode/" + (enabled ? "true" : "false"), false);
+    modeReq.send();
+    AppCall("aeroepub://domain/app/reload");
+}
 function Inspector() {
     AppCall("aeroepub://domain/app/inspector");
 }

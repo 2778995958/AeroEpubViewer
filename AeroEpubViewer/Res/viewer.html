@@ -25,6 +25,11 @@
                 </select>
             </div>
         </div>
+        <div>
+            <label style="cursor:pointer;font-size:0.8em;">
+                <input id="readingModeInput" type="checkbox" onchange="SetReadingMode(this.checked)" />阅读模式
+            </label>
+        </div>
         <div><div style="cursor:pointer;" onclick="ImageQuickView()"><span id="string_viewillu">速览插图</span></div></div>
         <div><div style="cursor:pointer;" onclick="BookInfo()"><span id="string_bookinfo">书籍信息</span></div></div>
         <div><div style="cursor:pointer;" onclick="SearchService()"><span id="string_search">搜索</span></div></div>
@@ -35,6 +40,8 @@
     <div id="sp_frame_search_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">Close</div><iframe id="sp_frame_search" class="sp_frame"></iframe></div>
     <div id="nav" style=""></div>
     <div id="mouseListener" style="position:fixed;z-index:1;width:100vw;height:100vh;left:0;top:0;"></div>
+    <div id="readingMaskBefore" style="display:none;position:fixed;z-index:6;background:white;pointer-events:none;"></div>
+    <div id="readingMaskAfter" style="display:none;position:fixed;z-index:6;background:white;pointer-events:none;"></div>
     <div id="scrollBar_container" onmouseenter="ScrollBarMouseEnter(event)" onmouseleave="ScrollBarMouseLeave(event)" onmousemove="ScrollBarMouseMove(event)">
         <div id="scrollBarChapterDisplay" class="scrollBarChapterDisplay"><div class="scrollBarChapterName"></div></div>
     </div>
@@ -52,6 +59,7 @@
     <script src="viewer_scrollbar.js"></script>
     <script src="viewer_sp_frame.js"></script>
     <script src="viewer_strings.js"></script>
+    <script src="viewer_reading_mode.js"></script>
     <script src="viewer_utils.js"></script>
     <script>
         var direction_rtl = new Object();
@@ -103,6 +111,7 @@ transform-origin: 50vw; transform: rotate(180deg); \
 .scrollBarChapterName{box-shadow: -0.1em -0.1em 0.3em -0.1em #808080, 0.05em -0.1em 0.3em -0.1em #808080;width: auto;display: inline-block;padding-left:0 0.2em 0 0.2em;}\
 ";
         direction_rtl.injectStyle = "body{height:100vh;min-width:66vh;} img, svg {max-height:100%;max-width:66vh;}";
+        var flowSideMargin = "4.5vw";
         var direction_default = new Object();
         direction_default.GetParallelLength = function (e) { return e.offsetHeight; }
         direction_default.SetParallelLength = function (e, px) { e.style.height = px + "px"; }
@@ -123,7 +132,7 @@ transform-origin: 50vw; transform: rotate(180deg); \
             return 0;
         }
         direction_default.style = "\
-iframe{width:91vw;left:4.5vw;min-height:90vh;} \
+iframe{width:calc(100vw - " + flowSideMargin + " * 2);left:" + flowSideMargin + ";min-height:90vh;} \
 #scrollBar_container{width: 3vw;height:100vh; right: 0; bottom: 0; margin: 0;}\
 #scrollBar{\
 margin:0 0 0 3vw;\
@@ -161,9 +170,14 @@ transform: rotate(90deg);\
         }
         function LoadUserSettings(json) {
             document.userSettings = json;
+            document.readingMode = !!json.readingMode;
             document.getElementById("fontSizeInput").value = json.bookFontSize;
             document.getElementById("themeSelect").value = json.viewerTheme;
+            let readingModeInput = document.getElementById("readingModeInput");
+            if (readingModeInput) readingModeInput.checked = document.readingMode;
             SetTheme();
+            if (document.readingMode && !paged && typeof ReadingUpdateMasks == "function") ReadingUpdateMasks();
+            if (document.readingMode && !paged && typeof ReadingTryRestorePendingAnchor == "function") setTimeout(ReadingTryRestorePendingAnchor, 0);
         }
         function IsImageOnlyPage(doc) {
             let body = doc.body;
@@ -220,6 +234,19 @@ transform: rotate(90deg);\
                 }
                 loading--;
                 page.style.visibility = "visible";
+                if (document.readingMode && !paged) {
+                    Scroll(0);
+                    requestAnimationFrame(function () {
+                        direction.AdjustFrameSize(page);
+                        page.readingPagination = null;
+                        if (typeof ReadingEnsurePagination == "function") ReadingEnsurePagination(page);
+                        if (typeof ReadingTryRestorePendingAnchor == "function") ReadingTryRestorePendingAnchor();
+                        Scroll(0);
+                        SetScrollBar();
+                    });
+                    page.onload = null;
+                    return;
+                }
                 if (check != null) check();
                 //Must scroll once to update current frame
                 if (page.lastFrame) {
@@ -293,6 +320,7 @@ transform: rotate(90deg);\
         var preLoadDistance = 500;
         var checking = false;
         function CheckLoad() {
+            if (document.readingMode) return;
             if (checking) return;
             checking = true;
             CheckForward();

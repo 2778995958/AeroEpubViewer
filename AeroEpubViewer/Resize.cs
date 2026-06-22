@@ -14,6 +14,8 @@ namespace AeroEpubViewer
     {
         public static string index="0";
         public static float percent=0;
+        public static string readingAnchor = "";
+        public static bool useReadingAnchor = false;
         public static Size lastSize;
         public static void SetPara(string[] args) 
         {
@@ -21,7 +23,13 @@ namespace AeroEpubViewer
             {
                 index = args[1];
                 percent = -(int.Parse(args[2])/(float)int.Parse(args[3]));
+                useReadingAnchor = false;
             }
+        }
+        public static void SetReadingPara(string anchor)
+        {
+            readingAnchor = anchor;
+            useReadingAnchor = true;
         }
 
     }
