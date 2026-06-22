@@ -58,9 +58,10 @@ document.addEventListener("touchmove", function (e) { PD.OnFrameTouchMove(e.touc
 function FixImageOnlyPage() {
     let images = document.body.querySelectorAll("img");
     let svgs = document.body.querySelectorAll("svg");
-    if (images.length != 1 || svgs.length != 0 || document.body.innerText.trim() != "") return;
+    let text = document.body.innerText || document.body.textContent || "";
+    if (images.length != 1 || svgs.length != 0 || text.trim() != "") return;
     let style = document.createElement("style");
-    style.innerHTML = "html,body{width:100vw!important;height:100vh!important;margin:0!important;padding:0!important;overflow:hidden!important;writing-mode:horizontal-tb!important;-webkit-writing-mode:horizontal-tb!important;} body,body *{max-width:100vw!important;max-height:100vh!important;} body{display:flex!important;align-items:center!important;justify-content:center!important;} body div,body p,body h1{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;} body span:empty{display:none!important;} img,svg{width:auto!important;height:auto!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;}";
+    style.innerHTML = "html,body{width:100vw!important;height:100vh!important;margin:0!important;padding:0!important;overflow:hidden!important;writing-mode:horizontal-tb!important;-webkit-writing-mode:horizontal-tb!important;} body,body *{box-sizing:border-box!important;max-width:none!important;max-height:none!important;} body{display:flex!important;align-items:center!important;justify-content:center!important;} body div,body p,body h1{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;} body span:empty{display:none!important;} img,svg{width:100%!important;height:100%!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;}";
     document.head.appendChild(style);
 }
 function Href(e) {
