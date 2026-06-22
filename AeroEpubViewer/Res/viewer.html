@@ -59,7 +59,19 @@
         direction_rtl.SetParallelLength = function (e, px) { e.style.width = px + "px"; }
         direction_rtl.GetElementPos = function (e, f) { return f.contentWindow.document.documentElement.scrollWidth - e.getBoundingClientRect().right; }
         direction_rtl.GetWindowLength = function () { return window.innerWidth; }
-        direction_rtl.AdjustFrameSize = function (f) { f.width = f.contentWindow.document.documentElement.scrollWidth + "px"; console.log(f.width); }
+        direction_rtl.AdjustFrameSize = function (f) {
+            if (IsImageOnlyPage(f.contentDocument)) {
+                let img = f.contentDocument.querySelector("img,svg");
+                let imageWidth = img.naturalWidth || img.viewBox.baseVal.width || img.clientWidth;
+                let imageHeight = img.naturalHeight || img.viewBox.baseVal.height || img.clientHeight;
+                if (imageWidth > 0 && imageHeight > 0) {
+                    f.width = Math.ceil(f.offsetHeight * imageWidth / imageHeight) + "px";
+                    return;
+                }
+            }
+            f.width = f.contentWindow.document.documentElement.scrollWidth + "px";
+            console.log(f.width);
+        }
         direction_rtl.SetPosStyle = function (e) { e.style.right = e.pos + "px"; }
         direction_rtl.GetEventParallel = function (e) { return e.target.offsetWidth - e.x; }
         direction_rtl.GetEventParallelPercent = function (e) { return (e.target.offsetWidth - e.x) / e.target.offsetWidth; }
@@ -152,6 +164,13 @@ transform: rotate(90deg);\
             document.getElementById("fontSizeInput").value = json.bookFontSize;
             document.getElementById("themeSelect").value = json.viewerTheme;
             SetTheme();
+        }
+        function IsImageOnlyPage(doc) {
+            let body = doc.body;
+            let images = body.querySelectorAll("img");
+            let svgs = body.querySelectorAll("svg");
+            let text = body.innerText || body.textContent || "";
+            return images.length + svgs.length == 1 && text.trim() == "";
         }
         ///↓Core Function///
         function CreateFrame(urlIndex, pos, check = null, addSelfLength = false, isPosRate = false, selector = null) {

@@ -71,6 +71,11 @@ class Util
         return r;
     }
     public static bool Contains(string[] c, string s) { if (c != null) foreach (string x in c) if (x == s) return true; return false; }
+    public static string ToJson(string s)
+    {
+        if (s == null) return "null";
+        return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n") + "\"";
+    }
 
 
     static Dictionary<string, string> mimeMap = new Dictionary<string, string>

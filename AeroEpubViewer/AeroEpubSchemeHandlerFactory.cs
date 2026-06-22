@@ -43,7 +43,7 @@ namespace AeroEpubViewer
                             {
                                 string content = (i.GetFile() as TextEpubFileEntry).text;
                                 content = HtmlHack.Hack(content);
-                                return ResourceHandler.FromString(content);
+                                return ResourceHandler.FromString(content, null, true, i.mediaType);
                             }
                             if (i.mediaType == "text/css")
                             {

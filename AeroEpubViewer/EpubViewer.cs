@@ -85,6 +85,7 @@ namespace AeroEpubViewer
             }
             string userDataCmd = string.Format("LoadUserSettings({0});", UserSettings.GetJson());
             string initCmd = "";
+            string spreadDataCmd = "";
             string lengthDataCmd = "";
             foreach (Itemref i in Program.epub.spine)
             {
@@ -102,10 +103,11 @@ namespace AeroEpubViewer
                 }
 
                 lengthDataCmd += "," + l;
+                spreadDataCmd += "," + Util.ToJson(i.properties);
             }
             if (lengthDataCmd.Length == 0) throw new Exception("Spine is empty.");
             lengthDataCmd = $"LoadScrollBar([{ lengthDataCmd.Substring(1)}],{new TocManager().GetPlainStructJSON()});";
-            initCmd = string.Format("Init([{0}],{1},{2});", initCmd.Substring(1), ResizeManage.index, ResizeManage.percent);
+            initCmd = string.Format("Init([{0}],{1},{2},\"\",[{3}]);", initCmd.Substring(1), ResizeManage.index, ResizeManage.percent, spreadDataCmd.Substring(1));
             chromium.ExecuteScriptAsync(userDataCmd + lengthDataCmd + initCmd);
 
             if (Program.epub.toc != null)
