@@ -193,6 +193,7 @@ transform: rotate(90deg);\
                 if (page.discarded) return;
                 try {
                     direction.AdjustFrameSize(page);
+                    if (IsImageOnlyPage(page.contentDocument)) page.imagePage = true;
                     let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
                     let wm = bodyComputedStyle.getPropertyValue("writing-mode");
                     if (direction == direction_rtl && wm != "vertical-rl") {
@@ -295,6 +296,7 @@ transform: rotate(90deg);\
                 direction.SetPosStyle(e);
                 if (e.pos <= 0 && e.pos + direction.GetParallelLength(e) > 0) { currentFrame = e; }
                 lastPos = e.pos + direction.GetParallelLength(e);
+                if (e.imagePage && i + 1 < frameList.length && frameList[i + 1].imagePage) lastPos -= 1;
             }
             if (!LoadingBusy()) CheckLoad();
             SetScrollBar();
