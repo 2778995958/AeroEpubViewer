@@ -85,7 +85,9 @@ namespace AeroEpubViewer
                                         else
                                         { imagePageSizeAttribute = "width=\"100%\""; }
                                     }
-                                    return ResourceHandler.FromString($"<html><head><link href=\"aeroepub://viewer/viewer-inject.css\" rel=\"stylesheet\" type=\"text/css\"/></head><body><img {imagePageSizeAttribute} src={("aeroepub://book" + uri.AbsolutePath)}><script src=\"aeroepub://viewer/viewer-inject.js\"></script></body></html>");
+                                    string imageSrc = "aeroepub://domain" + uri.AbsolutePath;
+                                    imageSrc = imageSrc.Replace("&", "&amp;").Replace("\"", "&quot;");
+                                    return ResourceHandler.FromString("<html><head><link href=\"aeroepub://domain/viewer/viewer-inject.css\" rel=\"stylesheet\" type=\"text/css\"/></head><body><img " + imagePageSizeAttribute + " src=\"" + imageSrc + "\"/><script src=\"aeroepub://domain/viewer/viewer-inject.js\"></script></body></html>");
                                 }
                                 //normally return image data. Decode use system decoder for some format
                                 switch (i.mediaType)
