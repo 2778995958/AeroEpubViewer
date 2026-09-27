@@ -59,15 +59,33 @@
         direction_rtl.SetParallelLength = function (e, px) { e.style.width = px + "px"; }
         direction_rtl.GetElementPos = function (e, f) { return f.contentWindow.document.documentElement.scrollWidth - e.getBoundingClientRect().right; }
         direction_rtl.GetWindowLength = function () { return window.innerWidth; }
+        function ImagePixelSize(img) {
+            if (!img) return null;
+            let w = img.naturalWidth || (img.viewBox && img.viewBox.baseVal && img.viewBox.baseVal.width) || 0;
+            let h = img.naturalHeight || (img.viewBox && img.viewBox.baseVal && img.viewBox.baseVal.height) || 0;
+            if (w > 0 && h > 0) return { w: w, h: h };
+            return null;
+        }
         direction_rtl.AdjustFrameSize = function (f) {
             if (IsImageOnlyPage(f.contentDocument)) {
+                f.imagePage = true;
                 let img = f.contentDocument.querySelector("img,svg");
-                let imageWidth = img.naturalWidth || img.viewBox.baseVal.width || img.clientWidth;
-                let imageHeight = img.naturalHeight || img.viewBox.baseVal.height || img.clientHeight;
-                if (imageWidth > 0 && imageHeight > 0) {
-                    f.width = Math.ceil(f.offsetHeight * imageWidth / imageHeight) + "px";
+                let box = ImagePixelSize(img);
+                if (!box && img && img.tagName == "IMG" && !img.complete && !f.imageSizeWait) {
+                    f.imageSizeWait = true;
+                    img.addEventListener("load", function () {
+                        if (f.discarded) return;
+                        direction.AdjustFrameSize(f);
+                        Scroll(0);
+                        SetScrollBar();
+                    });
                     return;
                 }
+                if (box) {
+                    f.width = Math.ceil(f.offsetHeight * box.w / box.h) + "px";
+                    return;
+                }
+                return;
             }
             f.width = f.contentWindow.document.documentElement.scrollWidth + "px";
             console.log(f.width);
@@ -145,9 +163,12 @@ transform: rotate(90deg);\
         var direction = direction_default;
         var frameList = new Array();
         var urlList;
+        var spreadList = [];
+        var spreadGap = 16;
         var paged = false;
         //////////Load/////////
-        function Init(_urlList, start = 0, posRate = 0, selector = "") {
+        function Init(_urlList, start = 0, posRate = 0, selector = "", _spreadList = []) {
+            spreadList = _spreadList || [];
             document.direction = direction;
             console.log("Init start=" + start + " pos=" + posRate + " selector=" + selector);
 
@@ -180,6 +201,7 @@ transform: rotate(90deg);\
             //private use
             page.pos = pos;
             page.urlIndex = urlIndex;
+            page.spread = (spreadList && spreadList[urlIndex]) || "";
             page.pendingLoad = true;
             page.style.visibility = "hidden";
             if (urlIndex == 0) page.firstFrame = true; else page.firstFrame = false;
@@ -296,7 +318,8 @@ transform: rotate(90deg);\
                 direction.SetPosStyle(e);
                 if (e.pos <= 0 && e.pos + direction.GetParallelLength(e) > 0) { currentFrame = e; }
                 lastPos = e.pos + direction.GetParallelLength(e);
-                if (e.imagePage && i + 1 < frameList.length && frameList[i + 1].imagePage) lastPos -= 1;
+                if (i + 1 < frameList.length && e.spread.indexOf("page-spread-left") >= 0) lastPos += spreadGap;
+                else if (e.imagePage && i + 1 < frameList.length && frameList[i + 1].imagePage) lastPos -= 1;
             }
             if (!LoadingBusy()) CheckLoad();
             SetScrollBar();

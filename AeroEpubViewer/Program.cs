@@ -39,7 +39,7 @@ namespace AeroEpubViewer
                     OpenFileDialog dialog = new OpenFileDialog();
                     dialog.Multiselect = false;
                     dialog.Title = "请选择书";
-                    dialog.Filter = "ePUB电子书(*.epub)|*.epub";
+                    dialog.Filter = "电子书与漫画|*.epub;*.zip;*.cbz;*.rar;*.cbr|ePUB电子书(*.epub)|*.epub|图片压缩档(*.zip;*.cbz;*.rar;*.cbr)|*.zip;*.cbz;*.rar;*.cbr";
                     if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
                         ReadBook(dialog.FileName);
@@ -62,7 +62,7 @@ namespace AeroEpubViewer
         {
             try
             {
-                epub = new EpubFile(bookPath);
+                epub = ImageArchive.IsArchive(bookPath) ? ImageArchive.Open(bookPath) : new EpubFile(bookPath);
             }
             catch (EpubErrorException e)
             {
@@ -110,7 +110,7 @@ namespace AeroEpubViewer
         }
         static void ShowEpubError(string bookPath, string detail)
         {
-            MessageBox.Show("讀取 EPUB 時發生錯誤:\n" + bookPath + "\n\n" + detail);
+            MessageBox.Show("讀取檔案時發生錯誤:\n" + bookPath + "\n\n" + detail);
         }
     }
 
