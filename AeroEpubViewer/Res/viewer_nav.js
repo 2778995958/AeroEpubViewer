@@ -61,9 +61,38 @@ function Link(url, _selector = null) {
     }
     console.log("Cannot link to " + url);
 }
-function DirectToIndex(urlIndex, selector) {
-    frameList.forEach(e => e.parentNode.removeChild(e));
+function FinishLoad(e) {
+    if (!e || !e.pendingLoad) return;
+    e.pendingLoad = false;
+    if (typeof loading === "number" && loading > 0) loading--;
+}
+function LoadingBusy() {
+    if (typeof loading !== "number" || loading <= 0) return false;
+    for (let i = 0; i < frameList.length; i++) {
+        if (frameList[i].pendingLoad) return true;
+    }
+    loading = 0;
+    return false;
+}
+function DropFrame(e) {
+    if (!e) return;
+    e.discarded = true;
+    FinishLoad(e);
+    e.onload = null;
+    if (e.parentNode) e.parentNode.removeChild(e);
+}
+function ReleaseFrames() {
+    if (typeof longScrollTimerHandle !== "undefined" && longScrollTimerHandle != null) {
+        clearInterval(longScrollTimerHandle);
+        longScrollTimerHandle = null;
+        longScrollRest = 0;
+    }
+    frameList.forEach(DropFrame);
     frameList = new Array();
+}
+function DirectToIndex(urlIndex, selector) {
+    if (!(urlIndex >= 0) || urlIndex >= urlList.length) return;
+    ReleaseFrames();
     Init(urlList, urlIndex, 0, selector);
     ScrollBarShow();
 }

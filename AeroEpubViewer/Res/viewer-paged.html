@@ -149,6 +149,7 @@
             loading++;
             console.log("Create Frame " + urlList[urlIndex] + " " + posType + ":" + posValue + " spread:" + pageSpread + " selector=" + selector);
             let page = document.createElement("iframe");
+            page.pendingLoad = true;
             if (spreadCount == 2) {
                 switch (pageSpread) {
                     case "left": break;
@@ -170,6 +171,8 @@
             page.frameBorder = "0";
             page.src = urlList[urlIndex] + "?page";
             page.onload = function () {
+                if (page.discarded) return;
+                try {
                 let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
                 let wm = bodyComputedStyle.getPropertyValue("writing-mode");
                 if (direction == direction_rtl && wm != "vertical-rl") {
@@ -202,10 +205,14 @@
                 injectStyle.innerHTML += "body{left:-" + pageNum + "00vw;}";
                 page.num = pageNum;
                 page.totalPage = totalPage;
-                loading--;
+                FinishLoad(page);
                 page.style.visibility = "visible";
                 if (check != null) check(page);
                 SetScrollBar();
+                } catch (err) {
+                    console.log(err);
+                    FinishLoad(page);
+                }
                 page.onload = null;
             }
             document.body.appendChild(page);
@@ -224,7 +231,7 @@
         }
         document.Scroll = Scroll;
         function Scroll(d) {
-            if (loading) return;
+            if (LoadingBusy()) return;
             if (d < 0) {//next
                 let last = frameList.pop();
                 if (spreadCount == 2 && last.spread != "center") {

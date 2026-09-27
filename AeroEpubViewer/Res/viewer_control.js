@@ -1,5 +1,8 @@
 document.addEventListener('contextmenu', event => event.preventDefault());
-document.Wheel = function (event) { document.Scroll(Math.sign(event.wheelDelta) * 50); }
+document.Wheel = function (event) {
+    let size = (document.userSettings && document.userSettings.bookFontSize) || 18;
+    document.Scroll(Math.sign(event.wheelDelta) * size * 5);
+}
 document.getElementById("mouseListener").onmousewheel = function (e) {
     document.Wheel(e);
 }
@@ -13,8 +16,16 @@ document.keydown = function (e) {
         switch (e.key) {
             case "PageDown": LongScroll(-0.8 * direction.GetWindowLength()); break;
             case "PageUp": LongScroll(0.8 * direction.GetWindowLength()); break;
-            case "Home": DirectToIndex(GetCurrentChapterStartIndex()); break;
-            case "End": DirectToIndex(GetNextChapterStartIndex()); break;
+            case "Home": {
+                let prevChapter = GetPreviousChapterStartIndex();
+                if (!currentFrame || prevChapter != currentFrame.urlIndex) DirectToIndex(prevChapter);
+                break;
+            }
+            case "End": {
+                let nextChapter = GetNextChapterStartIndex();
+                if (!currentFrame || nextChapter != currentFrame.urlIndex) DirectToIndex(nextChapter);
+                break;
+            }
             case "ArrowDown":
             case "ArrowLeft":
             case "ArrowRight":

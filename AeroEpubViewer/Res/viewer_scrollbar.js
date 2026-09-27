@@ -6,7 +6,7 @@ var scrollBar_container = document.getElementById("scrollBar_container");
 var scrollJumpHandle = null;
 var scrollJumpValue = 0;
 function JumpByScrollBarValue(v) {
-    if (loading) {
+    if (LoadingBusy()) {
         setTimeout(function () { JumpByScrollBarValue(scrollJumpValue); }, 60);
         return;
     }
@@ -15,12 +15,14 @@ function JumpByScrollBarValue(v) {
         s += contentLengthData[i];
         if (s >= v) {
             let rate = (v - s + contentLengthData[i]) / contentLengthData[i];
-            if (!paged && currentFrame != null && currentFrame.urlIndex == i) {
-                Scroll(-parseInt(rate * direction.GetParallelLength(currentFrame)) - currentFrame.pos);
-                return;
+            if (!paged && currentFrame != null && frameList.indexOf(currentFrame) >= 0 && currentFrame.urlIndex == i) {
+                let span = direction.GetParallelLength(currentFrame);
+                if (span > 0) {
+                    Scroll(-parseInt(rate * span) - currentFrame.pos);
+                    return;
+                }
             }
-            frameList.forEach(e => e.parentNode.removeChild(e));
-            frameList = new Array();
+            ReleaseFrames();
             Init(urlList, i, rate);
             return;
         }
@@ -68,16 +70,20 @@ function SetScrollBar() {
     let v = 0;
 
     if (paged) {
+        if (!frameList.length) return;
         let i = 0;
         for (; i < frameList[0].urlIndex; i++)
             v += contentLengthData[i];
         v += frameList[0].num / frameList[0].totalPage * contentLengthData[i];
     }
     else {
+        if (!currentFrame || frameList.indexOf(currentFrame) < 0) return;
         let i = 0;
         for (; i < currentFrame.urlIndex; i++)
             v += contentLengthData[i];
-        v += (-currentFrame.pos) * contentLengthData[i] / direction.GetParallelLength(currentFrame);//i��urlIndex
+        let span = direction.GetParallelLength(currentFrame);
+        if (!span) return;
+        v += (-currentFrame.pos) * contentLengthData[i] / span;
     }
     if (!scrollBarDragging) scrollBar.value = v;
 }

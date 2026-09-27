@@ -55,7 +55,7 @@
     <script src="viewer_utils.js"></script>
     <script>
         var direction_rtl = new Object();
-        direction_rtl.GetParallelLength = function (e) { return e.offsetWidth; }
+        direction_rtl.GetParallelLength = function (e) { return e.pendingLoad ? 0 : e.offsetWidth; }
         direction_rtl.SetParallelLength = function (e, px) { e.style.width = px + "px"; }
         direction_rtl.GetElementPos = function (e, f) { return f.contentWindow.document.documentElement.scrollWidth - e.getBoundingClientRect().right; }
         direction_rtl.GetWindowLength = function () { return window.innerWidth; }
@@ -104,7 +104,7 @@ transform-origin: 50vw; transform: rotate(180deg); \
 ";
         direction_rtl.injectStyle = "body{height:100vh;min-width:66vh;} img, svg {max-height:100%;max-width:66vh;}";
         var direction_default = new Object();
-        direction_default.GetParallelLength = function (e) { return e.offsetHeight; }
+        direction_default.GetParallelLength = function (e) { return e.pendingLoad ? 0 : e.offsetHeight; }
         direction_default.SetParallelLength = function (e, px) { e.style.height = px + "px"; }
         direction_default.GetElementPos = function (e, f) { return e.getBoundingClientRect().top; }
         direction_default.GetWindowLength = function () { return window.innerHeight; }
@@ -180,6 +180,7 @@ transform: rotate(90deg);\
             //private use
             page.pos = pos;
             page.urlIndex = urlIndex;
+            page.pendingLoad = true;
             page.style.visibility = "hidden";
             if (urlIndex == 0) page.firstFrame = true; else page.firstFrame = false;
             if (urlIndex == urlList.length - 1) page.lastFrame = true; else page.lastFrame = false;
@@ -189,43 +190,54 @@ transform: rotate(90deg);\
             page.src = urlList[urlIndex] + "?page";
             direction.SetPosStyle(page);
             page.onload = function () {
-                direction.AdjustFrameSize(page);
-                let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
-                let wm = bodyComputedStyle.getPropertyValue("writing-mode");
-                if (direction == direction_rtl && wm != "vertical-rl") {
-                    if (page.offsetHeight < page.contentDocument.documentElement.scrollHeight) {
-                        console.log("Need Pagebreak");
-                        //PageBreak_Rtl(page, page.contentDocument.documentElement.scrollHeight);
-                    }
+                if (page.discarded) return;
+                try {
+                    direction.AdjustFrameSize(page);
+                    let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
+                    let wm = bodyComputedStyle.getPropertyValue("writing-mode");
+                    if (direction == direction_rtl && wm != "vertical-rl") {
+                        if (page.offsetHeight < page.contentDocument.documentElement.scrollHeight) {
+                            console.log("Need Pagebreak");
+                            //PageBreak_Rtl(page, page.contentDocument.documentElement.scrollHeight);
+                        }
 
-                }
-                if (addSelfLength) {
-                    page.pos = pos - direction.GetParallelLength(page);
-                    direction.SetPosStyle(page);
-                } else {
-                    if (isPosRate) {
-                        page.pos = -parseInt(pos * direction.GetParallelLength(page));
-                    } else {
-                        page.pos = pos;
                     }
-                    direction.SetPosStyle(page);
-                }
-                if (selector) {
-                    let t = page.contentDocument.querySelector(selector);
-                    if (t) {
-                        let ele_pos = direction.GetElementPos(t, page);
-                        page.pos = -ele_pos + 10;
+                    let measured = direction == direction_rtl ? page.offsetWidth : page.offsetHeight;
+                    if (addSelfLength) {
+                        page.pos = pos - measured;
                         direction.SetPosStyle(page);
-                    } else console.log('Query Failure:' + selector);
+                    } else {
+                        if (isPosRate) {
+                            page.pos = -parseInt(pos * measured);
+                        } else {
+                            page.pos = pos;
+                        }
+                        direction.SetPosStyle(page);
+                    }
+                    if (selector) {
+                        let t = page.contentDocument.querySelector(selector);
+                        if (t) {
+                            let ele_pos = direction.GetElementPos(t, page);
+                            page.pos = -ele_pos + 10;
+                            direction.SetPosStyle(page);
+                        } else console.log('Query Failure:' + selector);
+                    }
+                } catch (err) {
+                    console.log(err);
                 }
-                loading--;
+                if (page.discarded) return;
+                FinishLoad(page);
                 page.style.visibility = "visible";
-                if (check != null) check();
-                //Must scroll once to update current frame
-                if (page.lastFrame) {
-                    Scroll(-1);
-                } else { Scroll(0); }
-                SetScrollBar();
+                try {
+                    if (check != null) check();
+                    if (page.discarded) return;
+                    if (page.lastFrame) {
+                        Scroll(-1);
+                    } else { Scroll(0); }
+                    SetScrollBar();
+                } catch (err) {
+                    console.log(err);
+                }
                 page.onload = null;
             }
             document.body.appendChild(page);
@@ -247,12 +259,33 @@ transform: rotate(90deg);\
         }
         document.Scroll = Scroll;
         function Scroll(px) {
+            if (!frameList.length) return;
             if (frameList[0].firstFrame && px > 0) {
                 if (frameList[0].pos + px > 0) { px = - frameList[0].pos; }
             }
             let last = frameList[frameList.length - 1];
-            if (last.lastFrame && px < 0) {
+            if (last.lastFrame && !last.pendingLoad && px < 0) {
                 if (last.pos + direction.GetParallelLength(last) + px < direction.GetWindowLength()) { px = direction.GetWindowLength() - last.pos - direction.GetParallelLength(last); }
+            }
+            if (px > 0) {
+                let top = null;
+                for (let i = 0; i < frameList.length; i++) {
+                    if (!frameList[i].pendingLoad) { top = frameList[i]; break; }
+                }
+                if (top && !top.firstFrame && top.pos + px > 0) px = top.pos < 0 ? -top.pos : 0;
+            }
+            if (px < 0) {
+                let bottom = null;
+                for (let i = frameList.length - 1; i >= 0; i--) {
+                    if (!frameList[i].pendingLoad) { bottom = frameList[i]; break; }
+                }
+                if (bottom && !bottom.lastFrame) {
+                    let edge = bottom.pos + direction.GetParallelLength(bottom);
+                    if (edge + px < direction.GetWindowLength()) {
+                        px = direction.GetWindowLength() - edge;
+                        if (px > 0) px = 0;
+                    }
+                }
             }
             currentFrame = frameList[0];
             let lastPos = px + frameList[0].pos;
@@ -263,7 +296,7 @@ transform: rotate(90deg);\
                 if (e.pos <= 0 && e.pos + direction.GetParallelLength(e) > 0) { currentFrame = e; }
                 lastPos = e.pos + direction.GetParallelLength(e);
             }
-            if (!loading) CheckLoad();
+            if (!LoadingBusy()) CheckLoad();
             SetScrollBar();
             MeasureScroll(px);
         }
@@ -307,9 +340,10 @@ transform: rotate(90deg);\
                 }
             }
 
-            if (first.pos + direction.GetParallelLength(first) < -offScreenDestoryDistance) {
-                first.parentNode.removeChild(first);
-                frameList.shift();
+            if (!first.pendingLoad && first.pos + direction.GetParallelLength(first) < -offScreenDestoryDistance) {
+                DropFrame(first);
+                let idx = frameList.indexOf(first);
+                if (idx >= 0) frameList.splice(idx, 1);
             }
         }
         function CheckForward() {
@@ -321,9 +355,10 @@ transform: rotate(90deg);\
                 }
             }
 
-            if (last.pos > direction.GetWindowLength() + offScreenDestoryDistance) {
-                last.parentNode.removeChild(last);
-                frameList.pop();
+            if (!last.pendingLoad && last.pos > direction.GetWindowLength() + offScreenDestoryDistance) {
+                DropFrame(last);
+                let idx = frameList.indexOf(last);
+                if (idx >= 0) frameList.splice(idx, 1);
                 CheckLoad();
             }
         }
@@ -337,9 +372,24 @@ transform: rotate(90deg);\
             } while (i >= 0);
             return i;
         }
+        function GetPreviousChapterStartIndex() {
+            if (!currentFrame || !contentChapterData || !contentChapterData.length) return 0;
+            let i = currentFrame.urlIndex;
+            if (i >= contentChapterData.length) i = contentChapterData.length - 1;
+            if (i < 0) return 0;
+            if (contentChapterData[i] != "") i--;
+            else {
+                while (i > 0 && contentChapterData[i] == "") i--;
+                i--;
+            }
+            while (i > 0 && contentChapterData[i] == "") i--;
+            return i < 0 ? 0 : i;
+        }
         function GetNextChapterStartIndex() {
+            let last = contentChapterData.length - 1;
+            if (!currentFrame || currentFrame.urlIndex >= last) return Math.max(0, last);
             let i = currentFrame.urlIndex + 1;
-            while (i < contentChapterData.length - 1) {
+            while (i < last) {
                 if (contentChapterData[i] != "") break;
                 i++;
             }
