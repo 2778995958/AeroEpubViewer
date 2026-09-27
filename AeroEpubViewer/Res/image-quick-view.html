@@ -55,15 +55,17 @@
             let div = document.createElement("div");
             div.className = "size_msg";
             img.parentNode.appendChild(div);
-            img.onload = function () {
+            function noteSize() {
                 let w = img.naturalWidth;
                 let h = img.naturalHeight;
-                let msg = "W:" + w + " H:" + h;
-                div.innerHTML = msg;
+                if (!w || !h) return;
+                div.innerHTML = "W:" + w + " H:" + h;
                 if (w < filterW || h < filterH) {
                     item.setAttribute("small", "");
                 }
             }
+            img.onload = noteSize;
+            if (img.complete) noteSize();
         });
         const hideSmallStyle = document.createElement("style");
         hideSmallStyle.innerHTML = "[small]{display:none}";

@@ -52,11 +52,18 @@ document.ContextMenu = function (e, left, top, frame) {
     contextMenu.style.top = top + "px";
     contextMenu.style.display = "block";
     let inner = "<div onclick=\"InspectElement()\">" + GetStringByName("InspectElement")+"</div>";
-    if (e.tagName == "IMG") {
-        inner += "<div onclick=\"CopyImage('" + e.src + "')\">" + GetStringByName("CopyImage")+"</div>";
-    }
-    if (e.tagName.toUpperCase() == "IMAGE") {
-        inner += "<div onclick=\"CopyImage('" + ReferPath(frame.src, e.getAttribute("xlink:href")) + "')\">" + GetStringByName("CopyImage")+"</div>";
+    let img = e;
+    while (img && img.tagName) {
+        let tag = img.tagName.toUpperCase();
+        if (tag == "IMG") {
+            inner += "<div onclick=\"CopyImage('" + img.src + "')\">" + GetStringByName("CopyImage")+"</div>";
+            break;
+        }
+        if (tag == "IMAGE") {
+            inner += "<div onclick=\"CopyImage('" + ReferPath(frame.src, img.getAttribute("xlink:href")) + "')\">" + GetStringByName("CopyImage")+"</div>";
+            break;
+        }
+        img = img.parentElement;
     }
     contextMenu.innerHTML = inner;
 }

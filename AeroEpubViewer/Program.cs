@@ -64,15 +64,19 @@ namespace AeroEpubViewer
             {
                 epub = new EpubFile(bookPath);
             }
-            catch (System.IO.IOException)
-            {
-                MessageBox.Show("该文件无法打开，可能已被其他程序打开：" + bookPath);
-                return;
-            }
             catch (EpubErrorException e)
             {
-
-                MessageBox.Show("读取EPUB时发生错误:" + bookPath + "\n" + e.Message);
+                ShowEpubError(bookPath, e.Message);
+                return;
+            }
+            catch (System.IO.IOException e)
+            {
+                ShowEpubError(bookPath, e.Message);
+                return;
+            }
+            catch (Exception e)
+            {
+                ShowEpubError(bookPath, e.ToString());
                 return;
             }
             try
@@ -81,7 +85,13 @@ namespace AeroEpubViewer
             }
             catch (EpubErrorException e)
             {
-                Console.WriteLine(e.Message);
+                ShowEpubError(bookPath, e.Message);
+                if (e.Fatal) return;
+            }
+            catch (Exception e)
+            {
+                ShowEpubError(bookPath, e.ToString());
+                return;
             }
             UserSettings.ReadSettings();
             var settings = new CefSettings();
@@ -97,6 +107,10 @@ namespace AeroEpubViewer
             Cef.Initialize(settings);
             Cef.EnableHighDPISupport();
             Application.Run(new EpubViewer());
+        }
+        static void ShowEpubError(string bookPath, string detail)
+        {
+            MessageBox.Show("讀取 EPUB 時發生錯誤:\n" + bookPath + "\n\n" + detail);
         }
     }
 

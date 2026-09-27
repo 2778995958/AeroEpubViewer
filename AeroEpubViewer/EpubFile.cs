@@ -22,14 +22,13 @@ namespace AeroEpub
                 if (_packageFile == null)
                 {
                     TextEpubFileEntry i = GetFile<TextEpubFileEntry>("META-INF/container.xml");
-                    XmlDocument container = new XmlDocument();
-                    container.LoadXml(i.text);
-                    if (i == null) { throw new EpubErrorException("Cannot find META-INF/container.xml"); }
+                    if (i == null) { throw new EpubErrorException("找不到 META-INF/container.xml"); }
+                    XmlDocument container = LoadReported(i.fullName, i.text);
                     var pathNode = container.GetElementsByTagName("rootfile");
-                    if (pathNode.Count == 0) throw new EpubErrorException("Cannot valid container.xml");
+                    if (pathNode.Count == 0) throw new EpubErrorException(i.fullName + "\n沒有 <rootfile>");
                     string opf_path = (pathNode[0] as XmlElement).GetAttribute("full-path");
                     _packageFile = GetFile<TextEpubFileEntry>(opf_path);
-                    if (_packageFile == null) { throw new EpubErrorException("Cannot find opf file: " + opf_path); }
+                    if (_packageFile == null) { throw new EpubErrorException(i.fullName + "\n找不到 opf: " + opf_path); }
                 }
                 return _packageFile;
             }
@@ -40,8 +39,7 @@ namespace AeroEpub
             {
                 if (_packageDocument == null)
                 {
-                    _packageDocument = new XmlDocument();
-                    _packageDocument.LoadXml(packageFile.text);
+                    _packageDocument = LoadReported(packageFile.fullName, packageFile.text);
                 }
                 return _packageDocument;
             }
@@ -123,7 +121,9 @@ namespace AeroEpub
 
         public void ReadMeta()
         {
-            var packge_tag = packageDocument.GetElementsByTagName("package")[0] as XmlElement;
+            var packageNodes = packageDocument.GetElementsByTagName("package");
+            if (packageNodes.Count == 0) throw new EpubErrorException(packageFile.fullName + "\n沒有 <package>");
+            var packge_tag = packageNodes[0] as XmlElement;
             idref = packge_tag.GetAttribute("unique-identifier");
             _version = packge_tag.GetAttribute("version");
             xml_lang = packge_tag.GetAttribute("xml:lang");//bookwalker
@@ -341,6 +341,7 @@ namespace AeroEpub
         void ReadSpine()
         {
             var f = packageDocument.GetElementsByTagName("manifest");
+            if (f.Count == 0) throw new EpubErrorException(packageFile.fullName + "\n沒有 <manifest>");
             _manifest = new Dictionary<string, Item>();
             foreach (XmlNode node in f[0].ChildNodes)
             {
@@ -348,6 +349,12 @@ namespace AeroEpub
                 var e = (XmlElement)node;
                 if (e.Name != "item") continue;
                 var i = new Item(e, this);
+                if (i.id == "" || _manifest.ContainsKey(i.id))
+                {
+                    string loc = Locate(packageFile.fullName, packageFile.text, "id=\"" + i.id + "\"");
+                    if (loc == null) loc = Locate(packageFile.fullName, packageFile.text, "id='" + i.id + "'");
+                    throw new EpubErrorException((loc ?? packageFile.fullName) + "\nmanifest id 是空的或重複: \"" + i.id + "\"");
+                }
                 _manifest.Add(i.id, i);
             }
             foreach (var a in _manifest)
@@ -359,8 +366,10 @@ namespace AeroEpub
                         a.Value.href = Path.GetDirectoryName(packageFile.fullName) + "/" + a.Value.href;
                 }
             }
-            var f2 = packageDocument.GetElementsByTagName("spine")[0] as XmlElement;
-            _spine = new Spine(f2, _manifest);
+            var spines = packageDocument.GetElementsByTagName("spine");
+            if (spines.Count == 0) throw new EpubErrorException(packageFile.fullName + "\n沒有 <spine>");
+            var f2 = spines[0] as XmlElement;
+            _spine = new Spine(f2, _manifest, packageFile);
         }
 
         public void DeleteEmpty()//只查一层……谁家epub也不会套几个文件夹
@@ -481,7 +490,7 @@ namespace AeroEpub
                                             var i = new EpubFileEntry(entry.FullName, d);
                                             entries.Add(i);
                                         }
-                                        else { throw new EpubErrorException("File size exceeds the limit."); }
+                                        else { throw new EpubErrorException(entry.FullName + "\n檔案大小超過限制。"); }
                                     }
                                     break;
                             }
@@ -490,6 +499,88 @@ namespace AeroEpub
             }
             if (entries.Count == 0) throw new EpubErrorException("Cannot find files in epub");
             if (entries[0].GetType() != typeof(EpubMIMETypeEntry)) throw new EpubErrorException("Cannot find mimetype in epub");
+        }
+
+        public static XmlDocument LoadReported(string fullName, string text)
+        {
+            var doc = new XmlDocument();
+            try { doc.LoadXml(text); }
+            catch (XmlException ex)
+            {
+                throw new EpubErrorException(fullName + ":" + ex.LineNumber + ":" + ex.LinePosition + "\n" + LineText(text, ex.LineNumber) + "\n" + ex.Message);
+            }
+            return doc;
+        }
+        public static string Locate(string fullName, string text, string needle)
+        {
+            if (text == null || string.IsNullOrEmpty(needle)) return null;
+            int i = text.IndexOf(needle);
+            if (i < 0) return null;
+            int line = 1;
+            for (int c = 0; c < i; c++) if (text[c] == '\n') line++;
+            return fullName + ":" + line + "\n" + LineText(text, line);
+        }
+        public static string LocatePath(string fullName, string text, string path)
+        {
+            if (string.IsNullOrEmpty(path)) return fullName;
+            string cur = path.Replace('\\', '/');
+            while (cur.Length > 0)
+            {
+                string hit = Locate(fullName, text, cur);
+                if (hit != null) return hit;
+                int s = cur.IndexOf('/');
+                if (s < 0) break;
+                cur = cur.Substring(s + 1);
+            }
+            return fullName + "\n" + path;
+        }
+        public static string DescribeMissingManifestId(string opfName, string opfText, string attrName, string id, Dictionary<string, Item> manifest)
+        {
+            string loc = Locate(opfName, opfText, attrName + "=\"" + id + "\"");
+            if (loc == null) loc = Locate(opfName, opfText, attrName + "='" + id + "'");
+            if (loc == null) loc = opfName + "\n" + attrName + "=\"" + id + "\"";
+            var sb = new StringBuilder();
+            sb.Append(loc);
+            sb.Append("\n這裡的 ").Append(attrName).Append("=\"").Append(id).Append("\" 在 manifest 找不到相同的 id。");
+            int shown = 0;
+            int extra = 0;
+            foreach (var kv in manifest)
+            {
+                if (!RelatedManifest(id, kv.Key, kv.Value.href)) continue;
+                if (shown >= 12) { extra++; continue; }
+                shown++;
+                string itemLoc = Locate(opfName, opfText, "id=\"" + kv.Key + "\"");
+                if (itemLoc == null) itemLoc = Locate(opfName, opfText, "id='" + kv.Key + "'");
+                sb.Append("\n\n可能相關:\n");
+                sb.Append(itemLoc ?? (opfName + " id=\"" + kv.Key + "\""));
+                if (!string.IsNullOrEmpty(kv.Value.href))
+                    sb.Append("\n壓縮檔內路徑: ").Append(kv.Value.href);
+            }
+            if (extra > 0) sb.Append("\n\n另外還有 ").Append(extra).Append(" 個相關項目沒有列完。");
+            if (shown == 0) sb.Append("\nmanifest 裡沒有 href 或 id 接近這個值的項目。");
+            return sb.ToString();
+        }
+        static bool RelatedManifest(string missingId, string itemId, string href)
+        {
+            if (string.IsNullOrEmpty(missingId)) return false;
+            if (!string.IsNullOrEmpty(href) && href.IndexOf(missingId) >= 0) return true;
+            if (!string.IsNullOrEmpty(itemId) && itemId.Length >= 3 && missingId.IndexOf(itemId) >= 0) return true;
+            return false;
+        }
+        static string LineText(string text, int line)
+        {
+            if (text == null || line <= 0) return "";
+            int cur = 1;
+            int start = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] != '\n') continue;
+                if (cur == line) return text.Substring(start, i - start).Trim('\r');
+                cur++;
+                start = i + 1;
+            }
+            if (cur == line) return text.Substring(start).Trim('\r');
+            return "";
         }
     }
     public class Item
@@ -519,13 +610,16 @@ namespace AeroEpub
         public Item toc;//For EPUB2
         public string pageProgressionDirection;
         public string id;
-        public Spine(XmlElement spine, Dictionary<string, Item> items)
+        public Spine(XmlElement spine, Dictionary<string, Item> items, TextEpubFileEntry opf)
         {
             string toc = spine.GetAttribute("toc");
             string id = spine.GetAttribute("id");
             if (toc != "")
             {
-                this.toc = items[toc];
+                Item found;
+                if (!items.TryGetValue(toc, out found))
+                    throw new EpubErrorException(EpubFile.DescribeMissingManifestId(opf.fullName, opf.text, "toc", toc, items));
+                this.toc = found;
             }
             pageProgressionDirection = spine.GetAttribute("page-progression-direction");
             foreach (XmlNode node in spine.ChildNodes)
@@ -533,7 +627,7 @@ namespace AeroEpub
                 if (node.NodeType != XmlNodeType.Element) continue;
                 var e = node as XmlElement;
                 if (e.Name != "itemref") continue;
-                this.items.Add(new Itemref(e, items));
+                this.items.Add(new Itemref(e, items, opf));
             }
         }
         public int Count { get { return items.Count; } }
@@ -565,9 +659,13 @@ namespace AeroEpub
         public string properties;
         public string id;
         public bool linear = true;
-        public Itemref(XmlElement itemref, Dictionary<string, Item> items)
+        public Itemref(XmlElement itemref, Dictionary<string, Item> items, TextEpubFileEntry opf)
         {
-            this.item = items[itemref.GetAttribute("idref")];
+            string idref = itemref.GetAttribute("idref");
+            Item found;
+            if (!items.TryGetValue(idref, out found))
+                throw new EpubErrorException(EpubFile.DescribeMissingManifestId(opf.fullName, opf.text, "idref", idref, items));
+            this.item = found;
             properties = itemref.GetAttribute("properties");
             id = itemref.GetAttribute("id");
             if (itemref.GetAttribute("linear") == "no") linear = false;
@@ -649,7 +747,9 @@ namespace AeroEpub
 
     public class EpubErrorException : System.Exception
     {
+        public bool Fatal = true;
         public EpubErrorException(string s) : base(s) { }
+        public EpubErrorException(string s, bool fatal) : base(s) { Fatal = fatal; }
     }
 
 }

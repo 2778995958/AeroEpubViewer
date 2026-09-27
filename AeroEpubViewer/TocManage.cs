@@ -22,8 +22,7 @@ namespace AeroEpubViewer
         {
             var f = Program.epub.toc.GetFile() as TextEpubFileEntry;
             tocPath = f.fullName;
-            XmlDocument xml = new XmlDocument();
-            xml.LoadXml(f.text);
+            XmlDocument xml = EpubFile.LoadReported(f.fullName, f.text);
             var root = xml.GetElementsByTagName("navMap")[0];
             tocTree = new TocItem();
             tocTree.children = new List<TocItem>();
@@ -65,8 +64,7 @@ namespace AeroEpubViewer
             var f = Program.epub.toc.GetFile() as TextEpubFileEntry;
 
             tocPath = f.fullName;
-            XmlDocument xml = new XmlDocument();
-            xml.LoadXml(f.text);
+            XmlDocument xml = EpubFile.LoadReported(f.fullName, f.text);
             var navs = xml.GetElementsByTagName("nav");
             foreach (XmlElement nav in navs)
             {
@@ -253,7 +251,9 @@ namespace AeroEpubViewer
                     }
                     i++;
                 }
-                throw new EpubErrorException("Error at parse toc");
+                var tocFile = Program.epub.toc.GetFile() as TextEpubFileEntry;
+                string where = tocFile == null ? Program.epub.toc.href : EpubFile.LocatePath(tocFile.fullName, tocFile.text, path);
+                throw new EpubErrorException(where + "\n目錄連結不在 spine 裡:\n" + _url, false);
             }
             get { return _url; }
         }

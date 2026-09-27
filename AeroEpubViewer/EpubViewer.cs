@@ -21,13 +21,19 @@ namespace AeroEpubViewer
 
         public EpubViewer()
         {
+            InitializeComponent();
+            this.Text = string.Format("AeroEpubViewer - {0}", Program.epub.title);
+            this.BackColor = ThemeColor();
             if (UserSettings.viewMode == "paged")
                 chromium = new ChromiumWebBrowser("aeroepub://domain/viewer/viewer-paged.html");
             else
                 chromium = new ChromiumWebBrowser("aeroepub://domain/viewer/viewer.html");
             chromium.BrowserSettings.WebSecurity = CefState.Disabled;
+            chromium.BrowserSettings.BackgroundColor = ThemeBackgroundColor();
             Controls.Add(chromium);
             chromium.Dock = DockStyle.Fill;
+            chromium.Bounds = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+            PerformLayout();
             chromium.IsBrowserInitializedChanged += OnLoad;
             chromium.LoadingStateChanged += SendDataWhenLoad;
 
@@ -54,8 +60,26 @@ namespace AeroEpubViewer
                     ResizeManage.lastSize = Size;
                 }
             };
-            InitializeComponent();
-            this.Text = string.Format("AeroEpubViewer - {0}", Program.epub.title);
+        }
+        static Color ThemeColor()
+        {
+            switch (UserSettings.theme)
+            {
+                case "dark": return Color.Black;
+                case "warm":
+                    string hex = UserSettings.warmColor;
+                    if (!string.IsNullOrEmpty(hex) && hex[0] == '#') hex = hex.Substring(1);
+                    int n;
+                    if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out n) && hex.Length == 6)
+                        return Color.FromArgb(255, (n >> 16) & 255, (n >> 8) & 255, n & 255);
+                    return Color.FromArgb(255, 0xff, 0xe6, 0xa0);
+                default: return Color.White;
+            }
+        }
+        static uint ThemeBackgroundColor()
+        {
+            Color c = ThemeColor();
+            return Cef.ColorSetARGB(255, c.R, c.G, c.B);
         }
         private void OnLoad(Object sender, EventArgs e)
         {
@@ -99,7 +123,7 @@ namespace AeroEpubViewer
                 else if (i.item.mediaType.Contains("image")) { l = 10; }
                 else
                 {
-                    throw new Exception("Cannot Handle type in spine:" + i.item.mediaType);
+                    throw new Exception(i.href + "\nCannot Handle type in spine: " + i.item.mediaType);
                 }
 
                 lengthDataCmd += "," + l;

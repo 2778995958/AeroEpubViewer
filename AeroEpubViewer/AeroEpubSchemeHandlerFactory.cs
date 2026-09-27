@@ -164,13 +164,7 @@ namespace AeroEpubViewer
                             case "CheckSearchResult":
                                 return ResourceHandler.FromString(SearchService.GetResult(int.Parse(args[1])));
                             case "CopyImage":
-                                {
-                                    string path = uri.AbsolutePath.Substring("/app/CopyImage/".Length);
-                                    var f = Program.epub.GetFile(path);
-                                    using (var stm = new MemoryStream(f.GetBytes()))
-                                    using (var img = System.Drawing.Image.FromStream(stm))
-                                        System.Windows.Forms.Clipboard.SetImage(img);
-                                }
+                                CopyImageToClipboard(uri.AbsolutePath.Substring("/app/CopyImage/".Length));
                                 return ResourceHandler.FromString("OK");
                             case "UserBookCss":
                                 return ResourceHandler.FromString(UserSettings.userBookCssContent, null, true, "text/css");
@@ -190,6 +184,63 @@ namespace AeroEpubViewer
 
             }
             return null;
+        }
+
+        static void CopyImageToClipboard(string path)
+        {
+            try
+            {
+                int q = path.IndexOf('?');
+                if (q >= 0) path = path.Substring(0, q);
+                path = Uri.UnescapeDataString(path);
+                AeroEpub.EpubFileEntry file;
+                try { file = Program.epub.GetFile(path); }
+                catch (AeroEpub.EpubErrorException)
+                {
+                    Log.log("[Error]CopyImage missing " + path);
+                    return;
+                }
+                var bmp = BitmapFrom(file.GetBytes());
+                if (bmp == null)
+                {
+                    Log.log("[Error]CopyImage decode " + path);
+                    return;
+                }
+                var ui = EpubViewer.chromium;
+                if (ui == null || ui.IsDisposed || !ui.IsHandleCreated)
+                {
+                    bmp.Dispose();
+                    return;
+                }
+                ui.BeginInvoke((Action)(() =>
+                {
+                    try { System.Windows.Forms.Clipboard.SetImage(bmp); }
+                    catch (Exception ex) { Log.log("[Error]CopyImage " + ex.Message); }
+                    finally { bmp.Dispose(); }
+                }));
+            }
+            catch (Exception ex)
+            {
+                Log.log("[Error]CopyImage " + ex);
+            }
+        }
+
+        static System.Drawing.Bitmap BitmapFrom(byte[] data)
+        {
+            try
+            {
+                using (var stm = new MemoryStream(data, false))
+                using (var img = System.Drawing.Image.FromStream(stm))
+                    return new System.Drawing.Bitmap(img);
+            }
+            catch (Exception)
+            {
+                byte[] decoded = ImageHack.TryDecode(data);
+                if (decoded == null) return null;
+                using (var stm = new MemoryStream(decoded, false))
+                using (var img = System.Drawing.Image.FromStream(stm))
+                    return new System.Drawing.Bitmap(img);
+            }
         }
     }
 }

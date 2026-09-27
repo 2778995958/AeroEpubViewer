@@ -1,5 +1,10 @@
 function CopyImage(url) {
-    AppCall("aeroepub://domain/app/CopyImage/" + url.substring("aeroepub://domain/book/".length));
+    let q = url.indexOf("?");
+    if (q >= 0) url = url.substring(0, q);
+    let mark = "/book/";
+    let i = url.indexOf(mark);
+    let path = i >= 0 ? url.substring(i + mark.length) : url;
+    AppCall("aeroepub://domain/app/CopyImage/" + path);
     document.TryCloseContextMenu();
 }
 function InspectElement() {
