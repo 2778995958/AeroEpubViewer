@@ -156,6 +156,14 @@ namespace AeroEpubViewer
                                 UserSettings.theme = args[1];
                                 UserSettings.WriteSettings();
                                 return ResourceHandler.FromString("OK");
+                            case "lang":
+                                {
+                                    string code = args.Length > 1 ? args[1] : "ja";
+                                    if (code != "ja" && code != "zh-TW" && code != "zh-CN" && code != "en") code = "ja";
+                                    UserSettings.uiLanguage = code;
+                                    UserSettings.WriteSettings();
+                                    return ResourceHandler.FromString("OK");
+                                }
                             case "ImageQuickView":
                                 return ResourceHandler.FromString(SpecialPageService.ImageQuickView());
                             case "ImageAlbum":

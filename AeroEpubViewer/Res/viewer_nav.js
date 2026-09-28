@@ -95,6 +95,7 @@ function ReleaseFrames() {
 function DirectToIndex(urlIndex, selector) {
     if (!(urlIndex >= 0) || urlIndex >= urlList.length) return;
     ReleaseFrames();
-    Init(urlList, urlIndex, 0, selector);
+    pagedPending = paged ? { urlIndex: urlIndex, pageIndex: 0, selector: selector || null } : null;
+    Init(urlList, urlIndex, 0, selector, spreadList);
     ScrollBarShow();
 }

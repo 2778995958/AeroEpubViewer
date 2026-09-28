@@ -18,6 +18,7 @@ namespace AeroEpubViewer
         //general
         public static string theme = "default";
         public static string warmColor = "#ffe6a0";
+        public static string uiLanguage = "ja";
 
         //font
         public static int bookFontSize = 26;
@@ -36,7 +37,8 @@ namespace AeroEpubViewer
             return "{" +
                 $"\"bookFontSize\":{bookFontSize}," +
                 $"\"viewerTheme\":\"{theme}\"," +
-                $"\"warmColor\":\"{warmColor}\""
+                $"\"warmColor\":\"{warmColor}\"," +
+                $"\"uiLanguage\":\"{uiLanguage}\""
                 + "}";
         }
         public static void ReadSettings()
@@ -80,6 +82,11 @@ namespace AeroEpubViewer
                                     warmColor = para[1];
                                     ImageHack.SetWarmColor(warmColor);
                                     break;
+                                case "UiLanguage":
+                                    uiLanguage = para[1];
+                                    if (uiLanguage != "ja" && uiLanguage != "zh-TW" && uiLanguage != "zh-CN" && uiLanguage != "en")
+                                        uiLanguage = "ja";
+                                    break;
                             }
                     }
             }
@@ -109,6 +116,7 @@ namespace AeroEpubViewer
             {
                 writer.WriteLine($"Theme, {theme}");
                 writer.WriteLine($"WarmColor, {warmColor}");
+                writer.WriteLine($"UiLanguage, {uiLanguage}");
             }
 
             // Write font settings

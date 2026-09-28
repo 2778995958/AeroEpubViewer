@@ -34,7 +34,9 @@ var ContextMenu = function (e, left, top, frame) {
     contextMenu.style.top = top + "px";
     contextMenu.style.display = "block";
     if (e.tagName.toUpperCase() == "IMG") {
-        contextMenu.innerHTML = "<div onclick=\"CopyImage('" + e.src + "')\">复制图片</div>"
+        var copyLabel = "Copy Image";
+        try { if (parent.GetStringByName) copyLabel = parent.GetStringByName("CopyImage"); } catch (x) { }
+        contextMenu.innerHTML = "<div onclick=\"CopyImage('" + e.src + "')\">" + copyLabel + "</div>"
     }
 }
 var TryCloseContextMenu = function () {

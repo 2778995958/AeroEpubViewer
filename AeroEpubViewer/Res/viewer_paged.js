@@ -2,6 +2,7 @@ var pagedPending = null;
 var pageTurnLock = 0;
 var pageMask = null;
 var dualPage = true;
+var spreadMates = [];
 document.dualPage = dualPage;
 
 function PageMargin() {
@@ -519,53 +520,42 @@ function IsImageLike(urlIndex) {
     return false;
 }
 
-function ImageRunStart(urlIndex) {
-    var start = urlIndex;
-    while (start > 0 && IsImageLike(start - 1) && !IsForcedCenter(start - 1) && !IsForcedCenter(start)) start--;
-    return start;
+function SpreadSide(urlIndex) {
+    var s = SpreadProp(urlIndex);
+    if (s.indexOf("page-spread-center") >= 0 || s.indexOf("rendition:spread-none") >= 0 || IsCoverIndex(urlIndex)) return "center";
+    if (s.indexOf("page-spread-left") >= 0) return "left";
+    if (s.indexOf("page-spread-right") >= 0) return "right";
+    return "";
+}
+
+function BuildSpreadMates() {
+    var mates = [];
+    for (var i = 0; i < urlList.length; i++) mates[i] = -1;
+    var rtl = IsRtlProgress();
+    for (var i = 0; i + 1 < urlList.length;) {
+        var a = SpreadSide(i);
+        var b = SpreadSide(i + 1);
+        if (IsImageLike(i) && IsImageLike(i + 1) && !IsForcedCenter(i) && !IsForcedCenter(i + 1) &&
+            (rtl ? a === "right" && b === "left" : a === "left" && b === "right")) {
+            mates[i] = i + 1;
+            mates[i + 1] = i;
+            i += 2;
+        } else {
+            i++;
+        }
+    }
+    return mates;
 }
 
 function ImageAlign(frame) {
-    if (!frame) return "center";
-    var s = frame.spread || SpreadProp(frame.urlIndex) || "";
-    if (s.indexOf("page-spread-center") >= 0) return "center";
-    if (s.indexOf("rendition:spread-none") >= 0) return "center";
-    if (IsCoverIndex(frame.urlIndex)) return "center";
-    if (IsForcedCenter(frame.urlIndex)) return "center";
-    if (!dualPage) return "center";
-    if (s.indexOf("page-spread-left") >= 0) return "left";
-    if (s.indexOf("page-spread-right") >= 0) return "right";
-    if (!(frame.imagePage || frame._asImage || IsImageLike(frame.urlIndex))) return "center";
-    var rtl = IsRtlProgress();
-    var prevI = frame.urlIndex - 1;
-    var nextI = frame.urlIndex + 1;
-    var prevImg = IsImageLike(prevI) && !IsForcedCenter(prevI);
-    var nextImg = IsImageLike(nextI) && !IsForcedCenter(nextI);
-    if (!prevImg && !nextImg) return "center";
-    var first = !prevImg;
-    if (prevImg && nextImg) first = ((frame.urlIndex - ImageRunStart(frame.urlIndex)) % 2 === 0);
-    if (rtl) return first ? "right" : "left";
-    return first ? "left" : "right";
+    if (!frame || !dualPage || !IsImageLike(frame.urlIndex)) return "center";
+    return SpreadSide(frame.urlIndex) || "center";
 }
 
 function PartnerIndex(frame) {
-    if (!dualPage || !frame) return null;
-    if (!IsImageLike(frame.urlIndex)) return null;
-    if (IsForcedCenter(frame.urlIndex)) return null;
-    var a = ImageAlign(frame);
-    if (a === "center") return null;
-    var rtl = IsRtlProgress();
-    var other = null;
-    if (a === "right") other = rtl ? frame.urlIndex + 1 : frame.urlIndex - 1;
-    if (a === "left") other = rtl ? frame.urlIndex - 1 : frame.urlIndex + 1;
-    if (other == null || other < 0 || other >= urlList.length) return null;
-    if (IsForcedCenter(other)) return null;
-    if (!IsImageLike(other)) return null;
-    var want = (a === "right") ? "left" : "right";
-    var of = FindFrame(other);
-    var oa = of ? ImageAlign(of) : ImageAlign({ spread: SpreadProp(other), urlIndex: other, imagePage: true, _asImage: true });
-    if (oa === want) return other;
-    return null;
+    if (!dualPage || !frame || !IsImageLike(frame.urlIndex) || IsForcedCenter(frame.urlIndex)) return null;
+    var idx = spreadMates && spreadMates[frame.urlIndex];
+    return idx >= 0 ? idx : null;
 }
 
 function SpreadPartner(frame) {
@@ -683,18 +673,15 @@ function ApplyImagePageVisual(frame) {
     var box = ContentBox();
     var pairIndex = PartnerIndex(frame);
     var align = ImageAlign(frame);
-    var wantDual = pairIndex != null && align !== "center";
+    var partner = pairIndex == null ? null : FindFrame(pairIndex);
+    var nat2 = pairIndex == null ? null : (partner && CaptureImageNaturalSize(partner));
+    var wantDual = pairIndex != null && align !== "center" && nat && nat2;
     var maxH = box.height;
     var maxW = box.width;
     var w, h, left, top;
     if (wantDual) {
-        var partner = FindFrame(pairIndex);
-        var nat2 = (partner && CaptureImageNaturalSize(partner)) || nat;
-        if (!nat) nat = nat2;
-        var nw = (nat && nat.w > 0) ? nat.w : 1;
-        var nh = (nat && nat.h > 0) ? nat.h : 1;
-        var nw2 = (nat2 && nat2.w > 0) ? nat2.w : nw;
-        var nh2 = (nat2 && nat2.h > 0) ? nat2.h : nh;
+        var nw = nat.w, nh = nat.h;
+        var nw2 = nat2.w, nh2 = nat2.h;
         h = maxH;
         var wL, wR;
         if (align === "left") {
@@ -770,11 +757,13 @@ function ApplyPageVisual(frame, visible, pageBox) {
     if (B <= T) { T = 0; B = h; }
     if (direction === direction_rtl) {
         frame.style.left = "auto";
+        frame.style.right = "0";
         frame.style.clipPath = "inset(0px " + (w - R) + "px 0px " + L + "px)";
         frame.style.clip = "rect(0px " + R + "px " + h + "px " + L + "px)";
         frame.pos = R - w + PageMargin();
     } else {
         frame.style.left = "0";
+        frame.style.right = "auto";
         frame.style.clipPath = "inset(" + T + "px 0px " + (h - B) + "px 0px)";
         frame.style.clip = "rect(" + T + "px " + w + "px " + B + "px 0px)";
         frame.pos = -T + PageMargin();
@@ -803,11 +792,13 @@ function ShowPage(frame, idx) {
     frame.num = idx;
     frame.totalPage = frame.pages.length;
     var pairIndex = PartnerIndex(frame);
-    if (pairIndex != null) EnsureFrame(pairIndex);
-    var partner = SpreadPartner(frame);
+    var partner = pairIndex == null ? null : EnsureFrame(pairIndex);
+    if (partner && (!partner.pages || !partner.pages.length)) {
+        partner.style.visibility = "hidden";
+    }
     var textBox = frame.pages[idx];
     for (var i = 0; i < frameList.length; i++) {
-        var show = frameList[i] === frame || (partner && frameList[i] === partner);
+        var show = frameList[i] === frame || (partner && frameList[i] === partner && partner.imgNatW > 8 && partner.imgNatH > 8);
         ApplyPageVisual(frameList[i], show, show && frameList[i] === frame ? textBox : null);
     }
     UpdatePageMask(frame, textBox);
@@ -984,16 +975,14 @@ function TurnPage(dir) {
     }
     if (dir < 0) {
         if (f.lastFrame) return;
-        var next = f.urlIndex + 1;
-        var pairNext = PartnerIndex(f);
-        if (pairNext != null && pairNext > f.urlIndex) next = pairNext + 1;
+        var pairIndex = PartnerIndex(f);
+        var next = pairIndex != null && pairIndex > f.urlIndex ? pairIndex + 1 : f.urlIndex + 1;
         pageTurnLock = now;
         GoToChapterPage(next, 0);
     } else {
         if (f.firstFrame) return;
-        var prev = f.urlIndex - 1;
-        var pairPrev = PartnerIndex(f);
-        if (pairPrev != null && pairPrev < f.urlIndex) prev = pairPrev - 1;
+        var pairIndex = PartnerIndex(f);
+        var prev = pairIndex != null && pairIndex < f.urlIndex ? pairIndex - 1 : f.urlIndex - 1;
         pageTurnLock = now;
         GoToChapterPage(prev, -1);
     }

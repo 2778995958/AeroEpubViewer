@@ -51,7 +51,7 @@
     <div id='context_menu'>
 
     </div>
-    <div>Hide Small Image<input id="hide_small_input" type="checkbox" onchange="ApplyHide()" checked /> </div>
+    <div><span id="hide_small_label">Hide Small Image</span><input id="hide_small_input" type="checkbox" onchange="ApplyHide()" checked /> </div>
     <div id="img_list">{0}</div>
     <script>
         function Direct(href, selector) {
@@ -88,6 +88,10 @@
                 document.head.removeChild(hideSmallStyle);
             }
         }
+        try {
+            var lab = document.getElementById("hide_small_label");
+            if (lab && parent.GetStringByName) lab.textContent = parent.GetStringByName("HideSmall");
+        } catch (e) { }
     </script>
     <script src="aeroepub://domain/viewer/sp-page.js"></script>
 </body>

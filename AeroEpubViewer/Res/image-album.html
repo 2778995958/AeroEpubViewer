@@ -111,19 +111,19 @@
 </head>
 <body class="hide-small">
     <div class="head">
-        <span>插圖</span>
+        <span id="album_title">挿絵</span>
         <span class="count" id="album_count"></span>
-        <label class="hide-small-label"><input id="hide_small_input" type="checkbox" onchange="ApplyHide()" checked /> Hide Small Image</label>
-        <span class="hint">點選放大　連點前往正文　Esc 返回</span>
+        <label class="hide-small-label"><input id="hide_small_input" type="checkbox" onchange="ApplyHide()" checked /> <span id="album_hide_label">Hide Small Image</span></label>
+        <span class="hint" id="album_hint">クリックで拡大　ダブルクリックで本文　Esc で戻る</span>
     </div>
     <div class="wrap" id="album_wrap">{0}</div>
-    <div class="empty" id="album_empty">這本書沒有達到門檻的插圖</div>
+    <div class="empty" id="album_empty">この本には閾値以上の挿絵がありません</div>
     <div id="lightbox">
         <img id="lb_img" alt="" />
         <div class="lb-bar">
-            <span class="lb-hint">← → 鄰近</span>
-            <button type="button" onclick="JumpCurrent()">前往此頁</button>
-            <span class="lb-hint">連點前往正文　Esc 返回相冊</span>
+            <span class="lb-hint" id="lb_near">← → 前後</span>
+            <button type="button" id="lb_go" onclick="JumpCurrent()">このページへ</button>
+            <span class="lb-hint" id="lb_back">ダブルクリックで本文　Esc でアルバムへ</span>
         </div>
     </div>
     <script>
@@ -137,6 +137,26 @@
         var lbImg = document.getElementById("lb_img");
         var hideSmallInput = document.getElementById("hide_small_input");
         var filterW = 500, filterH = 500;
+        function ParentStr(name, fb) {
+            try { if (parent.GetStringByName) return parent.GetStringByName(name); } catch (e) { }
+            return fb || "";
+        }
+        function ApplyAlbumLang() {
+            var map = [
+                ["album_title", "AlbumTitle"],
+                ["album_hide_label", "HideSmall"],
+                ["album_hint", "AlbumHint"],
+                ["album_empty", "AlbumEmpty"],
+                ["lb_near", "Nearby"],
+                ["lb_go", "GoPage"],
+                ["lb_back", "LightboxHint"]
+            ];
+            for (var m = 0; m < map.length; m++) {
+                var el = document.getElementById(map[m][0]);
+                if (el) el.textContent = ParentStr(map[m][1], el.textContent);
+            }
+        }
+        ApplyAlbumLang();
         function IsHidden(i) {
             return hideSmallInput.checked && items[i] && items[i].small;
         }
@@ -147,7 +167,12 @@
         }
         function UpdateCount() {
             var c = VisibleCount();
-            document.getElementById("album_count").textContent = c ? (c + " 張") : "";
+            var suf = ParentStr("AlbumCount", "");
+            var code = "ja";
+            try { code = parent.document.uiLanguage || "ja"; } catch (e) { }
+            var text = "";
+            if (c) text = (code === "ja") ? (c + suf) : (code === "en" ? String(c) : (c + " " + suf));
+            document.getElementById("album_count").textContent = text;
             var none = items.length === 0 || (hideSmallInput.checked && c === 0);
             wrap.style.display = none ? "none" : "flex";
             empty.style.display = none ? "block" : "none";

@@ -13,15 +13,24 @@
         <div id="navSwitchDummy" style="width:10vw;background:transparent;">TOC</div>
         <div style="border-right:solid 1px;">
             <div><input id="fontSizeInput" style="width:3em" type="number" />px</div>
-            <div onclick="ApplyFontSize(document.getElementById('fontSizeInput').value)" style="cursor:pointer;background:white;font-size:0.7em">字号生效</div>
+            <div onclick="ApplyFontSize(document.getElementById('fontSizeInput').value)" style="cursor:pointer;background:white;font-size:0.7em"><span id="string_font_apply">字サイズ適用</span></div>
         </div>
-        <div><div style="cursor:pointer;" onclick="Inspector()"><span id="string_inspector">检查</span></div></div>
+        <div><div style="cursor:pointer;" onclick="Inspector()"><span id="string_inspector">検査</span></div></div>
         <div>
-            <div style="top:3vh;line-height:1.2em;">
-                Theme:　<br /><select id="themeSelect" onchange="SetTheme()">
+            <div style="top:1.5vh;line-height:1.15em;">
+                <span id="string_theme">テーマ</span>
+                <select id="themeSelect" onchange="SetTheme()">
                     <option value="default" selected>Default</option>
                     <option value="warm">Warm</option>
                     <option value="dark">Dark</option>
+                </select>
+                <br />
+                <span id="string_lang">言語</span>
+                <select id="langSelect" onchange="SetUiLanguage()">
+                    <option value="ja" selected>日本語</option>
+                    <option value="zh-TW">繁體</option>
+                    <option value="zh-CN">简体</option>
+                    <option value="en">English</option>
                 </select>
             </div>
         </div>
@@ -36,8 +45,8 @@
         </div>
 
     </div>
-    <div id="sp_frame_general_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">Close</div><iframe id="sp_frame_general" class="sp_frame"></iframe></div>
-    <div id="sp_frame_search_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">Close</div><iframe id="sp_frame_search" class="sp_frame"></iframe></div>
+    <div id="sp_frame_general_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">閉じる</div><iframe id="sp_frame_general" class="sp_frame"></iframe></div>
+    <div id="sp_frame_search_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">閉じる</div><iframe id="sp_frame_search" class="sp_frame"></iframe></div>
     <div id="nav" style=""></div>
     <div id="mouseListener" style="position:fixed;z-index:1;width:100vw;height:100vh;left:0;top:0;"></div>
     <div id="menuHit"></div>
@@ -46,7 +55,7 @@
     </div>
     <div id="measure_container"><div></div><div></div></div>
     <div id="pageMask"></div>
-    <div id="openMask">開啟中…</div>
+    <div id="openMask">開いています…</div>
     <div id="context_menu"></div>
 
     <script src="viewer_settings.js"></script>
@@ -226,6 +235,8 @@ transform-origin: 50vw; \
         //////////Load/////////
         function Init(_urlList, start = 0, posRate = 0, selector = "", _spreadList = []) {
             spreadList = _spreadList || [];
+            urlList = _urlList;
+            spreadMates = BuildSpreadMates();
             document.direction = direction;
             document.paged = paged;
             document.dualPage = dualPage;
@@ -236,7 +247,6 @@ transform-origin: 50vw; \
             if (typeof UpdatePagedLabel === "function") UpdatePagedLabel();
             if (typeof UpdateDualLabel === "function") UpdateDualLabel();
 
-            urlList = _urlList;
             if (paged) {
                 pagedPending = { urlIndex: start, pageIndexFromRate: posRate, selector: selector || null };
             }
@@ -248,6 +258,7 @@ transform-origin: 50vw; \
             document.userSettings = json;
             document.getElementById("fontSizeInput").value = json.bookFontSize;
             document.getElementById("themeSelect").value = json.viewerTheme;
+            if (typeof ApplyUiLanguage === "function") ApplyUiLanguage(json.uiLanguage || "ja");
             SetTheme();
         }
         function IsImageOnlyPage(doc) {
