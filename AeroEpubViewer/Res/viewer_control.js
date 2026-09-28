@@ -1,6 +1,6 @@
 document.addEventListener('contextmenu', event => event.preventDefault());
 document.Wheel = function (event) {
-    let size = (document.userSettings && document.userSettings.bookFontSize) || 18;
+    let size = (document.userSettings && document.userSettings.bookFontSize) || 26;
     document.Scroll(Math.sign(event.wheelDelta) * size * 5);
 }
 document.getElementById("mouseListener").onmousewheel = function (e) {
@@ -10,6 +10,7 @@ document.keydown = function (e) {
     if (e.ctrlKey) {
         switch (e.key) {
             case "f": SearchService(); break;
+            case "w": window.close(); break;
 
         }
     } else {

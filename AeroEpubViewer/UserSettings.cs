@@ -16,11 +16,11 @@ namespace AeroEpubViewer
         static string fontSetting = Path.Combine(settingsPath, "font.txt");
 
         //general
-        public static string theme = "white";
+        public static string theme = "default";
         public static string warmColor = "#ffe6a0";
 
         //font
-        public static int bookFontSize = 18;
+        public static int bookFontSize = 26;
         public static Dictionary<string, string[]> fontFamilySettings = new Dictionary<string, string[]>();
 
         //user files
@@ -41,14 +41,17 @@ namespace AeroEpubViewer
         }
         public static void ReadSettings()
         {
-            if (File.Exists(fontSetting))
+            bool hasFontSetting = File.Exists(fontSetting);
+            bool hasGeneralSetting = File.Exists(generalSetting);
+
+            if (hasFontSetting)
             {
                 string line;
                 using (var file = new StreamReader(fontSetting))
                     while ((line = file.ReadLine()) != null)
                     {
                         string[] para = GetPara(line);
-                        if (para.Length == 2 && para[0] == "BookFontSize") { if (!int.TryParse(para[1], out bookFontSize)) bookFontSize = 18; }
+                        if (para.Length == 2 && para[0] == "BookFontSize") { if (!int.TryParse(para[1], out bookFontSize)) bookFontSize = 26; }
                         if (para.Length >= 3)
                         {
                             string code = Util.TrimLanguageCode(para[0]);
@@ -93,6 +96,9 @@ namespace AeroEpubViewer
                 userBookCssContent_rtl = File.ReadAllText(userBookCss_rtl);
             }
             HtmlHack.LoadUser();
+
+            if (!hasFontSetting || !hasGeneralSetting)
+                WriteSettings();
         }
         public static void WriteSettings()
         {
@@ -103,6 +109,12 @@ namespace AeroEpubViewer
             {
                 writer.WriteLine($"Theme, {theme}");
                 writer.WriteLine($"WarmColor, {warmColor}");
+            }
+
+            // Write font settings
+            using (var writer = new StreamWriter(fontSetting, false))
+            {
+                writer.WriteLine($"BookFontSize, {bookFontSize}");
             }
         }
         static string[] GetPara(string line)

@@ -138,6 +138,7 @@ namespace AeroEpubViewer
                                 return ResourceHandler.FromString("OK");
                             case "bookfontsize":
                                 UserSettings.bookFontSize = int.Parse(args[1]);
+                                UserSettings.WriteSettings();
                                 EpubViewer.chromium.LoadingStateChanged += EpubViewer.SendDataWhenLoad;
                                 EpubViewer.chromium.Reload(true);
                                 return ResourceHandler.FromString("OK");
