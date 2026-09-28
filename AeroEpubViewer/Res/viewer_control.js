@@ -22,15 +22,38 @@ function EventInNav(event) {
     }
     return false;
 }
+function OverlayFrame() {
+    var g = document.getElementById("sp_frame_general_container");
+    var s = document.getElementById("sp_frame_search_container");
+    if (g && g.style.display === "block") return document.getElementById("sp_frame_general");
+    if (s && s.style.display === "block") return document.getElementById("sp_frame_search");
+    return null;
+}
+function ScrollOverlay(dy) {
+    var f = OverlayFrame();
+    if (!f || !dy) return false;
+    try {
+        var w = f.contentWindow;
+        if (!w) return true;
+        var se = (w.document && (w.document.scrollingElement || w.document.documentElement || w.document.body)) || null;
+        if (se) se.scrollTop += dy;
+        else w.scrollBy(0, dy);
+    } catch (e) { }
+    return true;
+}
 document.Wheel = function (event) {
     if (EventInNav(event)) return;
-    if (event && event.preventDefault) event.preventDefault();
     var dy = 0;
     if (event) {
         if (typeof event.deltaY === "number" && event.deltaY !== 0) dy = event.deltaY;
         else if (typeof event.wheelDelta === "number" && event.wheelDelta !== 0) dy = -event.wheelDelta;
         else if (typeof event.detail === "number" && event.detail !== 0) dy = event.detail;
     }
+    if (ScrollOverlay(dy)) {
+        if (event && event.preventDefault) event.preventDefault();
+        return;
+    }
+    if (event && event.preventDefault) event.preventDefault();
     if (typeof paged !== "undefined" && paged) {
         if (!dy) { EnsureViewerFocus(); return; }
         TurnPage(dy > 0 ? -1 : 1);
@@ -54,6 +77,8 @@ BindWheel(document.body);
 BindWheel(document.getElementById("menuHit"));
 BindWheel(document.getElementById("pageMask"));
 BindWheel(document.getElementById("openMask"));
+BindWheel(document.getElementById("sp_frame_general_container"));
+BindWheel(document.getElementById("sp_frame_search_container"));
 
 function ViewerBlankClick(e) {
     if (!e || e.button != 0) return;

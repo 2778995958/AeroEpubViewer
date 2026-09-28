@@ -1,5 +1,10 @@
 ﻿var PD = this.parent.document;
 document.addEventListener('contextmenu', event => event.preventDefault());
+function OnSpWheel(e) {
+    if (e.stopPropagation) e.stopPropagation();
+}
+document.addEventListener("wheel", OnSpWheel, { passive: true });
+document.addEventListener("mousewheel", OnSpWheel, { passive: true });
 var themeStyle = document.createElement("style");
 themeStyle.innerHTML = PD.theme.frameStyle;
 document.head.appendChild(themeStyle);

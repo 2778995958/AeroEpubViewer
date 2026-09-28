@@ -4,9 +4,17 @@
     <meta charset="utf-8" />
     <title></title>
     <style>
+        html, body {
+            margin: 0;
+            min-width: 100%;
+            min-height: 100%;
+            width: 100%;
+        }
+
         img {
-            max-height: 95vh;
-            max-width: 90vw
+            max-height: 90vh;
+            max-width: 100%;
+            display: block;
         }
 
         #context_menu {
@@ -24,9 +32,11 @@
 
         .item {
             background: rgba(255,255,255,0.4);
-            padding: 5px;
-            margin: 5px;
+            padding: 8px;
+            margin: 8px 0;
             cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
         }
 
             .item > div {

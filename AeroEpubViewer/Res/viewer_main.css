@@ -132,6 +132,13 @@ navLabel:hover, #nav a:hover {
 
 .sp_frame_container {
     display: none;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 22;
+    background: inherit;
 }
 
 .sp_frame_close {
