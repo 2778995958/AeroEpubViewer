@@ -19,13 +19,7 @@ namespace AeroEpubViewer
         public static string Hack(string css)
         {
             if (!screenTested) Log.log("[Error]Hacking CSS when Screen Untested.");
-            if (UserSettings.viewMode == "paged")
-            {
-                css = css.Replace("page-break-","-webkit-column-break-");
-            }
-            else
-            {
-                if (Program.epub.spine.pageProgressionDirection == "rtl")
+            if (Program.epub.spine.pageProgressionDirection == "rtl")
                 {
                     Match m = reg_vw.Match(css);
                     while (m.Success)
@@ -55,8 +49,6 @@ namespace AeroEpubViewer
                         m = reg_vh.Match(css);
                     }
                 }
-
-            }
 
             return css;
         }

@@ -24,10 +24,7 @@ namespace AeroEpubViewer
             InitializeComponent();
             this.Text = string.Format("AeroEpubViewer - {0}", Program.epub.title);
             this.BackColor = ThemeColor();
-            if (UserSettings.viewMode == "paged")
-                chromium = new ChromiumWebBrowser("aeroepub://domain/viewer/viewer-paged.html");
-            else
-                chromium = new ChromiumWebBrowser("aeroepub://domain/viewer/viewer.html");
+            chromium = new ChromiumWebBrowser("aeroepub://domain/viewer/viewer.html");
             chromium.BrowserSettings.WebSecurity = CefState.Disabled;
             chromium.BrowserSettings.BackgroundColor = ThemeBackgroundColor();
             Controls.Add(chromium);
