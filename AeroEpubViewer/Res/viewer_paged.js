@@ -807,6 +807,17 @@ function ShowPage(frame, idx) {
     if (typeof EnsureViewerFocus === "function") EnsureViewerFocus();
 }
 
+function RefreshImageSpread(frame) {
+    if (!frame || frame.discarded || !currentFrame) return;
+    var current = currentFrame;
+    var currentMate = PartnerIndex(current);
+    var frameMate = PartnerIndex(frame);
+    if (current === frame || currentMate === frame.urlIndex || frameMate === current.urlIndex) {
+        ShowPage(current, current.pageIndex || 0);
+        CheckLoadPaged();
+    }
+}
+
 function CheckLoadPaged() {
     if (!currentFrame) return;
     var i = currentFrame.urlIndex;
@@ -902,6 +913,7 @@ function OnPagedFrameLoaded(frame, isPosRate, pos, selector) {
         direction.AdjustFrameSize(frame);
         CaptureImageNaturalSize(frame);
         ApplyPagedFrame(frame, isPosRate, pos, selector);
+        RefreshImageSpread(frame);
     });
 }
 
@@ -1007,7 +1019,7 @@ function TogglePaged() {
     ReleaseFrames();
     currentFrame = null;
     pagedPending = paged ? { urlIndex: idx, pageIndexFromRate: rate } : null;
-    Init(urlList, idx, rate);
+    Init(urlList, idx, rate, "", spreadList);
 }
 
 function ToggleDualPage() {

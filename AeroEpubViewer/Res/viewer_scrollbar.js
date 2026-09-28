@@ -28,7 +28,7 @@ function JumpByScrollBarValue(v) {
                 }
             }
             ReleaseFrames();
-            Init(urlList, i, rate);
+            Init(urlList, i, rate, "", spreadList);
             return;
         }
     }

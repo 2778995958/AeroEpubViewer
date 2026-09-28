@@ -233,8 +233,10 @@ transform-origin: 50vw; \
         if (typeof dualPage === "undefined") dualPage = true;
         document.dualPage = dualPage;
         //////////Load/////////
-        function Init(_urlList, start = 0, posRate = 0, selector = "", _spreadList = []) {
-            spreadList = _spreadList || [];
+        function Init(_urlList, start = 0, posRate = 0, selector = "", _spreadList = null) {
+            // Preserve OPF spread metadata when reinitializing from the scrollbar or mode toggle.
+            if (_spreadList != null) spreadList = _spreadList;
+            if (!spreadList) spreadList = [];
             urlList = _urlList;
             spreadMates = BuildSpreadMates();
             document.direction = direction;
@@ -303,6 +305,9 @@ transform-origin: 50vw; \
                 try {
                     direction.AdjustFrameSize(page);
                     if (IsImageOnlyPage(page.contentDocument) || document.bookFixedLayout || (page.spread && page.spread.indexOf("pre-paginated") >= 0)) page.imagePage = true;
+                    // Image-only reflowable pages are not known when Init builds the mate table.
+                    // Rebuild it after each frame reveals its actual page kind.
+                    if (typeof BuildSpreadMates === "function") spreadMates = BuildSpreadMates();
                     let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
                     let wm = bodyComputedStyle.getPropertyValue("writing-mode");
                     if (direction == direction_rtl && wm != "vertical-rl") {
