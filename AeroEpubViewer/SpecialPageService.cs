@@ -26,7 +26,7 @@ namespace AeroEpubViewer
                 {
                     var toc = tocm.GetPosition(i, null);
                     string src = a.href;
-                    r.Append($"<div class='item' onclick=\"Direct('{src}','')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc}</div></div>");
+                    r.Append($"<div class='item' onclick=\"Direct('{src}','')\"><div><img src='aeroepub://domain/book/{src}?g={EpubViewer.bookGen}'></div><div>{toc}</div></div>");
                     i++;
                     continue;
                 }
@@ -43,7 +43,7 @@ namespace AeroEpubViewer
                     string src = Util.ReferPath(a.href, href);
                     DocPoint p = new DocPoint(n, 0);
                     var toc = tocm.GetPosition(i, p);
-                    r.Append($"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc}</div></div>");
+                    r.Append($"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}?g={EpubViewer.bookGen}'></div><div>{toc}</div></div>");
                 }
                 foreach (XmlNode n in rs2)
                 {
@@ -59,7 +59,7 @@ namespace AeroEpubViewer
                     string src = Util.ReferPath(a.href, href);
                     DocPoint p = new DocPoint(n, 0);
                     var toc = tocm.GetPosition(i, p);
-                    r.Append($"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc}</div></div>");
+                    r.Append($"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}?g={EpubViewer.bookGen}'></div><div>{toc}</div></div>");
                 }
                 i++;
             }
@@ -80,7 +80,7 @@ namespace AeroEpubViewer
             StringBuilder r = new StringBuilder();
             r.Append("<html><head><style>img{max-height:55vh;max-width:90vw}data-item{font-weight:bold;}table{max-width:95%;margin-left:4%;border:none;}</style></head><body>");
             r.Append("<h1>" + Program.epub.title + "</h1>");
-            if (Program.epub.cover_img != "") r.Append("<img src=\"aeroepub://domain/book/" + Program.epub.cover_img + "\"/>");
+            if (Program.epub.cover_img != "") r.Append("<img src=\"aeroepub://domain/book/" + Program.epub.cover_img + "?g=" + EpubViewer.bookGen + "\"/>");
             r.Append("<table>");
             string creators = "";
             foreach (var a in Program.epub.creatorRecords)

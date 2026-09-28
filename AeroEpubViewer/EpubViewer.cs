@@ -18,9 +18,13 @@ namespace AeroEpubViewer
     public class EpubViewer : Form
     {
         public static ChromiumWebBrowser chromium;
+        public static EpubViewer instance;
+        public static int bookGen = 0;
+        static bool opening;
 
         public EpubViewer()
         {
+            instance = this;
             InitializeComponent();
             this.Text = string.Format("AeroEpubViewer - {0}", Program.epub.title);
             this.BackColor = ThemeColor();
@@ -100,6 +104,7 @@ namespace AeroEpubViewer
             {
 #endif
             if (e.IsLoading == true) return;
+            chromium.ExecuteScriptAsync("document.bookGen=" + bookGen + ";");
             if (Program.epub.IsRtl)
             {
                 chromium.ExecuteScriptAsync("direction = direction_rtl;");
@@ -201,6 +206,91 @@ namespace AeroEpubViewer
             this.ResumeLayout(false);
             ResizeManage.lastSize = Size;
 
+        }
+
+        public static void PromptOpenBook()
+        {
+            if (opening) return;
+            opening = true;
+            string path = null;
+            try
+            {
+                var dlg = new OpenFileDialog();
+                dlg.Multiselect = false;
+                dlg.Title = "请选择书";
+                dlg.Filter = Program.BookFilter;
+                if (Program.epub != null && !string.IsNullOrEmpty(Program.epub.path))
+                {
+                    try { dlg.InitialDirectory = Path.GetDirectoryName(Program.epub.path); } catch (Exception) { }
+                }
+                if (dlg.ShowDialog() == DialogResult.OK) path = dlg.FileName;
+            }
+            catch (Exception)
+            {
+            }
+            if (path == null) { opening = false; return; }
+            OpenAnotherBook(path);
+        }
+
+        public static void OpenAnotherBook(string path)
+        {
+            var ui = chromium;
+            var form = instance;
+            if (ui == null || form == null || ui.IsDisposed || form.IsDisposed) { opening = false; return; }
+            opening = true;
+            ui.ExecuteScriptAsync("if(typeof ShowOpenMask==='function')ShowOpenMask();");
+            Task.Run(() =>
+            {
+                try { return (object)Program.OpenEpubFile(path); }
+                catch (Exception ex) { return ex; }
+            }).ContinueWith(t =>
+            {
+                if (form.IsDisposed || ui.IsDisposed) { opening = false; return; }
+                form.BeginInvoke((Action)(() =>
+                {
+                    try
+                    {
+                        var result = t.Exception != null ? (object)t.Exception.GetBaseException() : t.Result;
+                        var err = result as Exception;
+                        if (err != null)
+                        {
+                            ui.ExecuteScriptAsync("if(typeof HideOpenMask==='function')HideOpenMask();");
+                            Program.ShowEpubError(path, err is EpubErrorException || err is IOException ? err.Message : err.ToString());
+                            return;
+                        }
+                        var book = (EpubFile)result;
+                        SearchService.Stop();
+                        Program.epub = book;
+                        bookGen++;
+                        ResizeManage.index = "0";
+                        ResizeManage.percent = 0;
+                        AeroEpubSchemeHandlerFactory.ResetBookState();
+                        HtmlHack.LoadUser();
+                        try
+                        {
+                            TocManage.Parse();
+                        }
+                        catch (EpubErrorException e)
+                        {
+                            Program.ShowEpubError(path, e.Message);
+                        }
+                        catch (Exception e)
+                        {
+                            Program.ShowEpubError(path, e.ToString());
+                        }
+                        form.Text = string.Format("AeroEpubViewer - {0}", Program.epub.title);
+                        form.BackColor = ThemeColor();
+                        try { ui.BrowserSettings.BackgroundColor = ThemeBackgroundColor(); } catch (Exception) { }
+                        ui.LoadingStateChanged -= SendDataWhenLoad;
+                        ui.LoadingStateChanged += SendDataWhenLoad;
+                        ui.Reload(true);
+                    }
+                    finally
+                    {
+                        opening = false;
+                    }
+                }));
+            });
         }
     }
 

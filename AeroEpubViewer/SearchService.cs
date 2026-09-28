@@ -15,6 +15,19 @@ namespace AeroEpubViewer
         static int matchPos = 0;
         static List<DocRange> matches = new List<DocRange>();
 
+        public static void Stop()
+        {
+            if (workThread != null)
+            {
+                try { workThread.Abort(); } catch (Exception) { }
+                workThread = null;
+            }
+            matches.Clear();
+            matchPos = 0;
+            workState = WorkState.idle;
+            end = true;
+            working = false;
+        }
         public static void Start(string word)
         {
             if (workThread != null)

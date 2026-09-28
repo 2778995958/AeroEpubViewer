@@ -3,6 +3,7 @@ function OnFrameWheel(e) {
     if (e.preventDefault) e.preventDefault();
     if (e.stopPropagation) e.stopPropagation();
     PD.Wheel(e);
+    if (PD.EnsureViewerFocus) PD.EnsureViewerFocus();
     return false;
 }
 window.addEventListener("wheel", OnFrameWheel, true);
@@ -61,8 +62,19 @@ FixImageOnlyPage();
 document.addEventListener("touchstart", function (e) { PD.OnFrameTouchStart(e.touches[0].screenX, e.touches[0].screenY); });
 document.addEventListener("touchend", function (e) { PD.OnFrameTouchEnd(); });
 document.addEventListener("touchmove", function (e) { PD.OnFrameTouchMove(e.touches[0].screenX, e.touches[0].screenY); });
-[].forEach.call(document.getElementsByTagName("img"), function (e) { e.src = e.src + "?" + PD.theme.name; });
-[].forEach.call(document.getElementsByTagName("image"), function (e) { e.setAttribute("xlink:href", e.getAttribute("xlink:href") + "?" + PD.theme.name); });
+function AppendThemeQuery(url) {
+    if (!url) return url;
+    var sep = url.indexOf("?") >= 0 ? "&" : "?";
+    return url + sep + PD.theme.name + "&g=" + (PD.bookGen || 0);
+}
+[].forEach.call(document.getElementsByTagName("img"), function (e) { e.src = AppendThemeQuery(e.src); });
+[].forEach.call(document.getElementsByTagName("image"), function (e) {
+    var href = e.getAttribute("xlink:href") || e.getAttribute("href") || "";
+    if (!href) return;
+    var next = AppendThemeQuery(href);
+    e.setAttribute("xlink:href", next);
+    e.setAttribute("href", next);
+});
 function VisibleTextOnly() {
     let text = "";
     let walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {

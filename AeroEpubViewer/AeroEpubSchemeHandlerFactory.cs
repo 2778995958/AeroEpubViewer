@@ -20,7 +20,11 @@ namespace AeroEpubViewer
         public const string SchemeName = "aeroepub";
         Assembly assembly = Assembly.GetExecutingAssembly();
 
-        string imagePageSizeAttribute;
+        static string imagePageSizeAttribute;
+        public static void ResetBookState()
+        {
+            imagePageSizeAttribute = null;
+        }
         public IResourceHandler Create(IBrowser browser, IFrame frame, string schemeName, IRequest request)
         {
             var uri = new Uri(request.Url);
@@ -85,7 +89,7 @@ namespace AeroEpubViewer
                                         else
                                         { imagePageSizeAttribute = "width=\"100%\""; }
                                     }
-                                    string imageSrc = "aeroepub://domain" + uri.AbsolutePath;
+                                    string imageSrc = "aeroepub://domain" + uri.AbsolutePath + "?g=" + EpubViewer.bookGen;
                                     imageSrc = imageSrc.Replace("&", "&amp;").Replace("\"", "&quot;");
                                     return ResourceHandler.FromString("<html><head><link href=\"aeroepub://domain/viewer/viewer-inject.css\" rel=\"stylesheet\" type=\"text/css\"/></head><body><img " + imagePageSizeAttribute + " src=\"" + imageSrc + "\"/><script src=\"aeroepub://domain/viewer/viewer-inject.js\"></script></body></html>");
                                 }
@@ -179,6 +183,20 @@ namespace AeroEpubViewer
                             case "External":
                                 System.Diagnostics.Process.Start("explorer.exe", Uri.UnescapeDataString(args[1]));
                                 return ResourceHandler.FromString("OK");
+                            case "open":
+                                {
+                                    var ui = EpubViewer.chromium;
+                                    if (ui != null && !ui.IsDisposed && ui.IsHandleCreated)
+                                        ui.BeginInvoke((Action)EpubViewer.PromptOpenBook);
+                                    return ResourceHandler.FromString("OK");
+                                }
+                            case "focus":
+                                {
+                                    var ui = EpubViewer.chromium;
+                                    if (ui != null && !ui.IsDisposed && ui.IsHandleCreated)
+                                        ui.BeginInvoke((Action)(() => { try { ui.Focus(); } catch (Exception) { } }));
+                                    return ResourceHandler.FromString("OK");
+                                }
                         }
 
 

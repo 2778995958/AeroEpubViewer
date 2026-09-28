@@ -13,6 +13,7 @@ namespace AeroEpubViewer
         public static TocItem tocTree;
         public static void Parse()
         {
+            tocTree = null;
             if (Program.epub.toc == null) return;
             if (Program.epub.version == "2.0") Parse2();
             if (Program.epub.version == "3.0") Parse3();

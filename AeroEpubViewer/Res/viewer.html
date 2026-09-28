@@ -30,7 +30,9 @@
         <div><div style="cursor:pointer;" onclick="SearchService()"><span id="string_search">搜索</span></div></div>
         <div><div style="cursor:pointer;" onclick="TogglePaged()"><span id="string_paged">滾動</span></div></div>
         <div><div style="cursor:pointer;" onclick="ToggleDualPage()"><span id="string_dual">單頁</span></div></div>
-
+        <div id="menuOpen" style="float:right;border-right:none;border-left:solid 1px;">
+            <div style="cursor:pointer;" onclick="OpenBook()"><span id="string_open">開檔</span></div>
+        </div>
 
     </div>
     <div id="sp_frame_general_container" class="sp_frame_container"><div class="sp_frame_close" onclick="document.CloseSpFrame()">Close</div><iframe id="sp_frame_general" class="sp_frame"></iframe></div>
@@ -43,6 +45,7 @@
     </div>
     <div id="measure_container"><div></div><div></div></div>
     <div id="pageMask"></div>
+    <div id="openMask">開啟中…</div>
     <div id="context_menu"></div>
 
     <script src="viewer_settings.js"></script>
@@ -281,7 +284,7 @@ transform-origin: 50vw; \
 
             page.scrolling = "no";
             page.frameBorder = "0";
-            page.src = urlList[urlIndex] + "?page";
+            page.src = urlList[urlIndex] + "?page&g=" + (document.bookGen || 0);
             direction.SetPosStyle(page);
             page.onload = function () {
                 if (page.discarded) return;

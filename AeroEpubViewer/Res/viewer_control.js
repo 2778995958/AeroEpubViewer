@@ -1,5 +1,29 @@
 document.addEventListener('contextmenu', event => event.preventDefault());
+function EnsureViewerFocus() {
+    try { window.focus(); } catch (e) { }
+    var b = document.body;
+    if (b) {
+        if (!b.hasAttribute("tabindex")) b.setAttribute("tabindex", "-1");
+        try { b.focus(); } catch (e2) { }
+    }
+    if (typeof AppCall === "function") AppCall("aeroepub://domain/app/focus");
+}
+document.EnsureViewerFocus = EnsureViewerFocus;
+function EventInNav(event) {
+    if (!document.navOn) return false;
+    var nav = document.getElementById("nav");
+    var t = event && (event.target || event.srcElement);
+    if (!nav || !t) return false;
+    if (t === nav) return true;
+    if (t.closest) return !!t.closest("#nav");
+    while (t) {
+        if (t === nav) return true;
+        t = t.parentElement;
+    }
+    return false;
+}
 document.Wheel = function (event) {
+    if (EventInNav(event)) return;
     if (event && event.preventDefault) event.preventDefault();
     var dy = 0;
     if (event) {
@@ -8,12 +32,14 @@ document.Wheel = function (event) {
         else if (typeof event.detail === "number" && event.detail !== 0) dy = event.detail;
     }
     if (typeof paged !== "undefined" && paged) {
-        if (!dy) return;
+        if (!dy) { EnsureViewerFocus(); return; }
         TurnPage(dy > 0 ? -1 : 1);
+        EnsureViewerFocus();
         return;
     }
     let size = (document.userSettings && document.userSettings.bookFontSize) || 26;
     document.Scroll((dy > 0 ? -1 : 1) * size * 5);
+    EnsureViewerFocus();
 }
 function BindWheel(el) {
     if (!el) return;
@@ -26,6 +52,8 @@ BindWheel(document);
 BindWheel(document.getElementById("mouseListener"));
 BindWheel(document.body);
 BindWheel(document.getElementById("menuHit"));
+BindWheel(document.getElementById("pageMask"));
+BindWheel(document.getElementById("openMask"));
 
 function ViewerBlankClick(e) {
     if (!e || e.button != 0) return;
@@ -43,7 +71,16 @@ function ViewerBlankClick(e) {
 }
 document.getElementById("menuHit").onmouseup = ViewerBlankClick;
 document.getElementById("mouseListener").onmouseup = ViewerBlankClick;
+function IsTypingTarget(el) {
+    if (!el) return false;
+    var tag = (el.tagName || "").toUpperCase();
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
 document.keydown = function (e) {
+    if ((e.key === "o" || e.key === "O") && !IsTypingTarget(e.target)) {
+        OpenBook();
+        return;
+    }
     if (e.ctrlKey) {
         switch (e.key) {
             case "f": SearchService(); break;
@@ -81,7 +118,7 @@ document.keydown = function (e) {
         }
     }
 };
-document.addEventListener("keydown", document.keydown);
+window.addEventListener("keydown", document.keydown, true);
 
 var touchPos = -1;
 var touchStart = -1;

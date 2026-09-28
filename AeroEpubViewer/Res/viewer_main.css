@@ -97,8 +97,21 @@ nav {
 }
 
 
+#nav.navOpen {
+    height: 89vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-top: 11vh;
+    opacity: 1;
+}
+
 #nav::-webkit-scrollbar {
-    display: none;
+    width: 8px;
+}
+
+#nav::-webkit-scrollbar-thumb {
+    background: rgba(128,128,128,0.45);
+    border-radius: 4px;
 }
 
 navLabel {
@@ -295,6 +308,27 @@ navLabel:hover, #nav a:hover {
     display: none;
     z-index: 6;
     pointer-events: auto;
+}
+
+#openMask {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 18;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: inherit;
+    font-size: 2em;
+    pointer-events: auto;
+}
+
+#menuOpen {
+    float: right;
+    border-right: none;
+    border-left: solid 1px;
 }
 
 #context_menu {

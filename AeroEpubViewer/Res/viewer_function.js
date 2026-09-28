@@ -34,3 +34,19 @@ function ScreenTest() {
     let e = document.getElementById("screenTest");
     AppCall("aeroepub://domain/app/screentest/" + e.offsetWidth + "/" + e.offsetHeight);
 }
+function OpenBook() {
+    document.MenuClose();
+    AppCall("aeroepub://domain/app/open");
+}
+function ShowOpenMask() {
+    if (document.CloseSpFrame) {
+        try { document.CloseSpFrame(); } catch (e) { }
+    }
+    document.MenuClose();
+    var m = document.getElementById("openMask");
+    if (m) m.style.display = "flex";
+}
+function HideOpenMask() {
+    var m = document.getElementById("openMask");
+    if (m) m.style.display = "none";
+}

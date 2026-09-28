@@ -15,6 +15,7 @@ namespace AeroEpubViewer
 
         public static EpubFile epub;
         public static string cachePath = Path.GetTempPath() + "AEVCache";
+        public static string BookFilter = "电子书与漫画|*.epub;*.zip;*.cbz;*.rar;*.cbr|ePUB电子书(*.epub)|*.epub|图片压缩档(*.zip;*.cbz;*.rar;*.cbr)|*.zip;*.cbz;*.rar;*.cbr";
         /// <summary>
         /// 应用程序的主入口点。
         /// </summary>
@@ -39,7 +40,7 @@ namespace AeroEpubViewer
                     OpenFileDialog dialog = new OpenFileDialog();
                     dialog.Multiselect = false;
                     dialog.Title = "请选择书";
-                    dialog.Filter = "电子书与漫画|*.epub;*.zip;*.cbz;*.rar;*.cbr|ePUB电子书(*.epub)|*.epub|图片压缩档(*.zip;*.cbz;*.rar;*.cbr)|*.zip;*.cbz;*.rar;*.cbr";
+                    dialog.Filter = BookFilter;
                     if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
                         ReadBook(dialog.FileName);
@@ -58,11 +59,15 @@ namespace AeroEpubViewer
             }
 #endif
         }
+        public static EpubFile OpenEpubFile(string bookPath)
+        {
+            return ImageArchive.IsArchive(bookPath) ? ImageArchive.Open(bookPath) : new EpubFile(bookPath);
+        }
         static void ReadBook(string bookPath)
         {
             try
             {
-                epub = ImageArchive.IsArchive(bookPath) ? ImageArchive.Open(bookPath) : new EpubFile(bookPath);
+                epub = OpenEpubFile(bookPath);
             }
             catch (EpubErrorException e)
             {
@@ -108,7 +113,7 @@ namespace AeroEpubViewer
             Cef.EnableHighDPISupport();
             Application.Run(new EpubViewer());
         }
-        static void ShowEpubError(string bookPath, string detail)
+        public static void ShowEpubError(string bookPath, string detail)
         {
             MessageBox.Show("讀取檔案時發生錯誤:\n" + bookPath + "\n\n" + detail);
         }

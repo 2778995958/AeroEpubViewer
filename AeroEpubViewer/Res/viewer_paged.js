@@ -813,6 +813,7 @@ function ShowPage(frame, idx) {
     UpdatePageMask(frame, textBox);
     if (typeof SetScrollBar === "function") SetScrollBar();
     if (typeof ScrollBarShow === "function") ScrollBarShow();
+    if (typeof EnsureViewerFocus === "function") EnsureViewerFocus();
 }
 
 function CheckLoadPaged() {

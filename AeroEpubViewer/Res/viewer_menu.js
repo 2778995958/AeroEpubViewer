@@ -3,16 +3,23 @@ document.navOn = false;
 function NavSwitch() {
     if (document.navOn) {
         document.navOn = false;
+        nav.classList.remove("navOpen");
         nav.style.animation = "navHide 0.5s ease 0s 1 ";
 
     } else {
         document.navOn = true;
+        nav.classList.add("navOpen");
         nav.style.animation = "navDisplay 0.5s ease 0s 1";
 
     }
     nav.style.animationFillMode = "forwards";
 
 }
+function StopNavWheel(e) {
+    e.stopPropagation();
+}
+nav.addEventListener("wheel", StopNavWheel, { passive: true });
+nav.addEventListener("mousewheel", StopNavWheel, { passive: true });
 document.menuOn = false;
 var menu = document.getElementById("menu");
 
