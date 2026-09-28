@@ -16,7 +16,7 @@ namespace AeroEpubViewer
         static string fontSetting = Path.Combine(settingsPath, "font.txt");
 
         //general
-        public static string theme = "warm";
+        public static string theme = "white";
         public static string warmColor = "#ffe6a0";
 
         //font
@@ -97,6 +97,13 @@ namespace AeroEpubViewer
         public static void WriteSettings()
         {
             if (!Directory.Exists(settingsPath)) Directory.CreateDirectory(settingsPath);
+
+            // Write general settings
+            using (var writer = new StreamWriter(generalSetting, false))
+            {
+                writer.WriteLine($"Theme, {theme}");
+                writer.WriteLine($"WarmColor, {warmColor}");
+            }
         }
         static string[] GetPara(string line)
         {

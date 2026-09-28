@@ -149,6 +149,7 @@ namespace AeroEpubViewer
                                 return ResourceHandler.FromString("OK");
                             case "theme":
                                 UserSettings.theme = args[1];
+                                UserSettings.WriteSettings();
                                 return ResourceHandler.FromString("OK");
                             case "ImageQuickView":
                                 return ResourceHandler.FromString(SpecialPageService.ImageQuickView());
