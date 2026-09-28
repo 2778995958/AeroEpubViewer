@@ -100,10 +100,16 @@ namespace AeroEpubViewer
             {
 #endif
             if (e.IsLoading == true) return;
-            if (Program.epub.spine.pageProgressionDirection == "rtl")
+            if (Program.epub.IsRtl)
             {
                 chromium.ExecuteScriptAsync("direction = direction_rtl;");
             }
+            chromium.ExecuteScriptAsync(Program.epub.IsFixedLayout()
+                ? "document.bookFixedLayout=true;"
+                : "document.bookFixedLayout=false;");
+            chromium.ExecuteScriptAsync(Program.epub.ShouldDualPage()
+                ? "dualPage=true;document.dualPage=true;"
+                : "dualPage=false;document.dualPage=false;");
             string userDataCmd = string.Format("LoadUserSettings({0});", UserSettings.GetJson());
             string initCmd = "";
             string spreadDataCmd = "";
@@ -183,17 +189,9 @@ namespace AeroEpubViewer
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(EpubViewer));
             this.SuspendLayout();
-            var size = new System.Drawing.Size();
-            if (Program.epub.spine.pageProgressionDirection == "rtl")
-            {
-                size.Width = Screen.PrimaryScreen.WorkingArea.Width * 4 / 5;
-                size.Height = Screen.PrimaryScreen.WorkingArea.Height * 4 / 5;
-            }
-            else
-            {
-                size.Height = Screen.PrimaryScreen.WorkingArea.Height * 4 / 5;
-                size.Width = size.Height * 4 / 5;
-            }
+            var size = new System.Drawing.Size(
+                Screen.PrimaryScreen.WorkingArea.Width * 4 / 5,
+                Screen.PrimaryScreen.WorkingArea.Height * 4 / 5);
             // 
             // EpubViewer
             // 

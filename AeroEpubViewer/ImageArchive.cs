@@ -75,7 +75,7 @@ namespace AeroEpubViewer
                 string id = "p" + i.ToString("D5");
                 string href = "img/" + id + pages[i].ext;
                 book.entries.Add(new EpubFileEntry("OPS/" + href, pages[i].data));
-                string spread = (i % 2 == 0) ? "page-spread-right" : "page-spread-left";
+                string spread = (i == 0) ? "page-spread-center" : ((i % 2 == 1) ? "page-spread-right" : "page-spread-left");
                 opf.Append("<item id=\"").Append(id).Append("\" href=\"").Append(href).Append("\" media-type=\"").Append(Mime(pages[i].ext)).Append("\"/>\n");
                 spine.Append("<itemref idref=\"").Append(id).Append("\" linear=\"yes\" properties=\"").Append(spread).Append("\"/>\n");
             }

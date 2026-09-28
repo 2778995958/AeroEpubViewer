@@ -19,30 +19,47 @@ namespace AeroEpubViewer
             string content = new StreamReader(fs).ReadToEnd();
             StringBuilder r = new StringBuilder();
             int i = 0;
+            var tocm = new TocManager();
             foreach (Itemref a in Program.epub.spine)
             {
+                if (a.item != null && a.item.mediaType != null && a.item.mediaType.StartsWith("image"))
+                {
+                    var toc = tocm.GetPosition(i, null);
+                    string src = a.href;
+                    r.Append($"<div class='item' onclick=\"Direct('{src}','')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc}</div></div>");
+                    i++;
+                    continue;
+                }
                 var item = a.item.GetFile() as TextEpubFileEntry;
-                if (item == null) continue;
+                if (item == null) { i++; continue; }
                 var text = item.text;
                 var xml = Xhtml.Load(text);
                 var rs = xml.GetElementsByTagName("img");
                 var rs2 = xml.GetElementsByTagName("image");//svg
-                var tocm = new TocManager();
                 foreach (XmlNode n in rs)
                 {
-                    string src = Util.ReferPath(a.href, n.Attributes["src"].Value);
+                    string href = Attr(n, "src");
+                    if (string.IsNullOrEmpty(href)) continue;
+                    string src = Util.ReferPath(a.href, href);
                     DocPoint p = new DocPoint(n, 0);
                     var toc = tocm.GetPosition(i, p);
-                    string record = $"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc.ToString()}</div></div>";
-                    r.Append(record);
+                    r.Append($"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc}</div></div>");
                 }
                 foreach (XmlNode n in rs2)
                 {
-                    string src = Util.ReferPath(a.href, n.Attributes["xlink:href"].Value);
+                    string href = Attr(n, "href");
+                    if (string.IsNullOrEmpty(href)) href = Attr(n, "xlink:href");
+                    if (string.IsNullOrEmpty(href) && n is XmlElement)
+                    {
+                        var el = (XmlElement)n;
+                        href = el.GetAttribute("href", "http://www.w3.org/1999/xlink");
+                        if (string.IsNullOrEmpty(href)) href = el.GetAttribute("href");
+                    }
+                    if (string.IsNullOrEmpty(href)) continue;
+                    string src = Util.ReferPath(a.href, href);
                     DocPoint p = new DocPoint(n, 0);
                     var toc = tocm.GetPosition(i, p);
-                    string record = $"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc.ToString()}</div></div>";
-                    r.Append(record);
+                    r.Append($"<div class='item' onclick=\"Direct('{a.href}','{p.selector}')\"><div><img src='aeroepub://domain/book/{src}'></div><div>{toc}</div></div>");
                 }
                 i++;
             }
@@ -50,6 +67,13 @@ namespace AeroEpubViewer
         }
 
 
+
+        static string Attr(XmlNode n, string name)
+        {
+            if (n == null || n.Attributes == null) return null;
+            var a = n.Attributes[name];
+            return a == null ? null : a.Value;
+        }
 
         public static string BookInfo()
         {

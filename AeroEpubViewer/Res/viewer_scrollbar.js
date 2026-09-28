@@ -15,6 +15,11 @@ function JumpByScrollBarValue(v) {
         s += contentLengthData[i];
         if (s >= v) {
             let rate = (v - s + contentLengthData[i]) / contentLengthData[i];
+            if (paged && currentFrame != null && currentFrame.urlIndex == i && currentFrame.pages && currentFrame.pages.length) {
+                let idx = Math.round(rate * currentFrame.pages.length);
+                ShowPage(currentFrame, idx);
+                return;
+            }
             if (!paged && currentFrame != null && frameList.indexOf(currentFrame) >= 0 && currentFrame.urlIndex == i) {
                 let span = direction.GetParallelLength(currentFrame);
                 if (span > 0) {
@@ -70,11 +75,13 @@ function SetScrollBar() {
     let v = 0;
 
     if (paged) {
-        if (!frameList.length) return;
+        if (!currentFrame || !contentLengthData) return;
         let i = 0;
-        for (; i < frameList[0].urlIndex; i++)
+        for (; i < currentFrame.urlIndex; i++)
             v += contentLengthData[i];
-        v += frameList[0].num / frameList[0].totalPage * contentLengthData[i];
+        let total = currentFrame.totalPage || (currentFrame.pages && currentFrame.pages.length) || 1;
+        let num = currentFrame.pageIndex || 0;
+        v += (num / total) * contentLengthData[i];
     }
     else {
         if (!currentFrame || frameList.indexOf(currentFrame) < 0) return;
@@ -103,7 +110,7 @@ function ScrollBarMouseLeave(e) {
     currentChapterName = "";
 }
 function ScrollBarMouseMove(e) {
-    let p = direction.GetEventParallelPercent(e);
+    let p = direction.GetChromeEventPercent ? direction.GetChromeEventPercent(e) : direction.GetEventParallelPercent(e);
     ScrollBarChapterDisplay(p);
 }
 var currentChapterName = "";
@@ -128,9 +135,11 @@ function ScrollBarChapterDisplay(p) {
         }
     }
     if (currentChapterName == "" || (currentChapterName != chaptername && currentChapterName != "")) {
-        let pxmax = direction.GetParallelLength(scrollBar_container);
-        direction.SetParallelPositivePos(scrollBarChapterDisplay, chapterpos / scrollBar.max * pxmax);
-        direction.SetParallelLength(scrollBarChapterDisplay, chapterlength / scrollBar.max * pxmax);
+        let pxmax = direction.GetChromeLength ? direction.GetChromeLength() : direction.GetParallelLength(scrollBar_container);
+        if (direction.SetChromePos) direction.SetChromePos(scrollBarChapterDisplay, chapterpos / scrollBar.max * pxmax);
+        else direction.SetParallelPositivePos(scrollBarChapterDisplay, chapterpos / scrollBar.max * pxmax);
+        if (direction.SetChromeLength) direction.SetChromeLength(scrollBarChapterDisplay, chapterlength / scrollBar.max * pxmax);
+        else direction.SetParallelLength(scrollBarChapterDisplay, chapterlength / scrollBar.max * pxmax);
         currentChapterName = chaptername;
         scrollBarChapterDisplay.children[0].innerHTML = chaptername;
     }

@@ -89,6 +89,8 @@ function ReleaseFrames() {
     }
     frameList.forEach(DropFrame);
     frameList = new Array();
+    currentFrame = null;
+    if (typeof pagedPending !== "undefined") pagedPending = null;
 }
 function DirectToIndex(urlIndex, selector) {
     if (!(urlIndex >= 0) || urlIndex >= urlList.length) return;

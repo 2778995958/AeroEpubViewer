@@ -100,6 +100,36 @@ namespace AeroEpub
                     return xml_lang;
             }
         }
+        public bool IsRtl
+        {
+            get { return spine.pageProgressionDirection == "rtl"; }
+        }
+        public bool IsFixedLayout()
+        {
+            if (meta == null) ReadMeta();
+            foreach (var m in meta)
+            {
+                if (m.name == null || m.value == null) continue;
+                string n = m.name.Trim();
+                string v = m.value.Trim();
+                if (n == "rendition:layout" && v.IndexOf("pre-paginated") >= 0) return true;
+                if (n == "fixed-layout" && (v == "true" || v == "yes" || v == "1")) return true;
+            }
+            return false;
+        }
+        public bool ShouldDualPage()
+        {
+            if (IsFixedLayout()) return true;
+            bool left = false, right = false;
+            foreach (var i in spine)
+            {
+                if (!i.linear) continue;
+                string p = i.properties ?? "";
+                if (p.IndexOf("page-spread-left") >= 0) left = true;
+                if (p.IndexOf("page-spread-right") >= 0) right = true;
+            }
+            return left && right;
+        }
 
         public string xml_lang;
         public List<MetaRecord> titleRecords;

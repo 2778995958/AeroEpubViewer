@@ -219,6 +219,7 @@
     <EmbeddedResource Include="Res\viewer_scrollbar.js" />
     <EmbeddedResource Include="Res\viewer_settings.js" />
     <EmbeddedResource Include="Res\viewer_utils.js" />
+    <EmbeddedResource Include="Res\viewer_paged.js" />
     <EmbeddedResource Include="Res\viewer_sp_frame.js" />
     <EmbeddedResource Include="Res\image-quick-view.html" />
     <EmbeddedResource Include="Res\search-service.html" />
