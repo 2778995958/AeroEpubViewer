@@ -6,6 +6,7 @@
     ["Copy Image", "复制图片", "画像をコピー"],//4
     ["Inspect Element", "检查元素", "要素検査"],//5
     ["Open", "開檔", "開く"],//6
+    ["Album", "畫冊", "画集"],//7
 ];
 
 var stringLoadList = [
@@ -13,7 +14,8 @@ var stringLoadList = [
     ["string_viewillu", 1],
     ["string_search", 2],
     ["string_bookinfo", 3],
-    ["string_open", 6]
+    ["string_open", 6],
+    ["string_album", 7]
 ];
 
 var stringNameList = {

@@ -102,6 +102,28 @@ function IsTypingTarget(el) {
     return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 document.keydown = function (e) {
+    if (typeof OverlayFrame === "function" && OverlayFrame()) {
+        if (e.key === "Escape") {
+            try {
+                var ow = OverlayFrame().contentWindow;
+                if (ow && typeof ow.CloseLightbox === "function" && ow.document.getElementById("lightbox") && ow.document.getElementById("lightbox").style.display === "block") {
+                    ow.CloseLightbox();
+                    return;
+                }
+            } catch (x) { }
+            document.CloseSpFrame();
+            return;
+        }
+        try {
+            var lw = OverlayFrame().contentWindow;
+            if (lw && typeof lw.Step === "function" && lw.document.getElementById("lightbox") && lw.document.getElementById("lightbox").style.display === "block") {
+                if (e.key === "ArrowLeft" || e.key === "PageUp") { lw.Step(-1); return; }
+                if (e.key === "ArrowRight" || e.key === "PageDown") { lw.Step(1); return; }
+                if (e.key === "Enter" || e.key === "g" || e.key === "G") { lw.JumpCurrent(); return; }
+            }
+        } catch (x2) { }
+        return;
+    }
     if ((e.key === "o" || e.key === "O") && !IsTypingTarget(e.target)) {
         OpenBook();
         return;

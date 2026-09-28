@@ -158,6 +158,8 @@ namespace AeroEpubViewer
                                 return ResourceHandler.FromString("OK");
                             case "ImageQuickView":
                                 return ResourceHandler.FromString(SpecialPageService.ImageQuickView());
+                            case "ImageAlbum":
+                                return ResourceHandler.FromString(SpecialPageService.ImageAlbum());
                             case "BookInfo":
                                 return ResourceHandler.FromString(SpecialPageService.BookInfo());
                             case "StartSearch":

@@ -66,7 +66,132 @@ namespace AeroEpubViewer
             return content.Replace("{0}", r.ToString());
         }
 
+        const int AlbumThreshold = 500;
 
+        public static string ImageAlbum()
+        {
+            var filename = "image-album.html".Replace("/", ".");
+            Stream fs = Assembly.GetExecutingAssembly().GetManifestResourceStream("AeroEpubViewer.Res." + filename);
+            string content = new StreamReader(fs).ReadToEnd();
+            var tiles = new StringBuilder();
+            var json = new StringBuilder();
+            json.Append("[");
+            int n = 0;
+            int i = 0;
+            var tocm = new TocManager();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Itemref a in Program.epub.spine)
+            {
+                if (a.item != null && a.item.mediaType != null && a.item.mediaType.StartsWith("image"))
+                {
+                    AddAlbumItem(tiles, json, ref n, seen, a.href, a.href, "", tocm.GetPosition(i, null));
+                    i++;
+                    continue;
+                }
+                var item = a.item == null ? null : a.item.GetFile() as TextEpubFileEntry;
+                if (item == null) { i++; continue; }
+                var xml = Xhtml.Load(item.text);
+                foreach (XmlNode node in xml.GetElementsByTagName("img"))
+                {
+                    string href = Attr(node, "src");
+                    if (string.IsNullOrEmpty(href)) continue;
+                    string src = Util.ReferPath(a.href, href);
+                    AddAlbumItem(tiles, json, ref n, seen, src, a.href, new DocPoint(node, 0).selector, tocm.GetPosition(i, new DocPoint(node, 0)));
+                }
+                foreach (XmlNode node in xml.GetElementsByTagName("image"))
+                {
+                    string href = Attr(node, "href");
+                    if (string.IsNullOrEmpty(href)) href = Attr(node, "xlink:href");
+                    if (string.IsNullOrEmpty(href) && node is XmlElement)
+                    {
+                        var el = (XmlElement)node;
+                        href = el.GetAttribute("href", "http://www.w3.org/1999/xlink");
+                        if (string.IsNullOrEmpty(href)) href = el.GetAttribute("href");
+                    }
+                    if (string.IsNullOrEmpty(href)) continue;
+                    string src = Util.ReferPath(a.href, href);
+                    AddAlbumItem(tiles, json, ref n, seen, src, a.href, new DocPoint(node, 0).selector, tocm.GetPosition(i, new DocPoint(node, 0)));
+                }
+                i++;
+            }
+            json.Append("]");
+            return content.Replace("{0}", tiles.ToString()).Replace("{1}", json.ToString());
+        }
+
+        static void AddAlbumItem(StringBuilder tiles, StringBuilder json, ref int n, HashSet<string> seen, string src, string href, string selector, object toc)
+        {
+            if (string.IsNullOrEmpty(src) || seen.Contains(src)) return;
+            seen.Add(src);
+            int w, h;
+            bool sized = TryImageSize(src, out w, out h);
+            bool small = sized && (w < AlbumThreshold || h < AlbumThreshold);
+            string url = "aeroepub://domain/book/" + src + "?g=" + EpubViewer.bookGen;
+            string label = HtmlEnc(toc == null ? Path.GetFileName(src) : toc.ToString());
+            tiles.Append("<button type='button' class='tile' onclick='TileClick(").Append(n).Append(")'");
+            if (small) tiles.Append(" small=''");
+            tiles.Append("><img src='").Append(HtmlEnc(url)).Append("' alt=''/><div class='cap'>").Append(label).Append("</div></button>");
+            if (n > 0) json.Append(',');
+            json.Append("{src:\"").Append(JsStr(url)).Append("\",href:\"").Append(JsStr(href))
+                .Append("\",selector:\"").Append(JsStr(selector ?? "")).Append("\",small:").Append(small ? "true" : "false").Append("}");
+            n++;
+        }
+
+        static bool TryImageSize(string bookPath, out int w, out int h)
+        {
+            w = h = 0;
+            byte[] data = null;
+            try
+            {
+                Item item = Program.epub.GetItem(bookPath);
+                if (item != null)
+                {
+                    var f = item.GetFile();
+                    if (f != null) data = f.GetBytes();
+                }
+                if (data == null)
+                    data = Program.epub.GetFile(bookPath).GetBytes();
+            }
+            catch { return false; }
+            if (data == null || data.Length < 24) return false;
+            try
+            {
+                using (var ms = new MemoryStream(data, false))
+                using (var img = System.Drawing.Image.FromStream(ms, false, false))
+                {
+                    w = img.Width;
+                    h = img.Height;
+                    return w > 0 && h > 0;
+                }
+            }
+            catch
+            {
+                byte[] decoded = ImageHack.TryDecode(data);
+                if (decoded == null) return false;
+                try
+                {
+                    using (var ms = new MemoryStream(decoded, false))
+                    using (var img = System.Drawing.Image.FromStream(ms, false, false))
+                    {
+                        w = img.Width;
+                        h = img.Height;
+                        return w > 0 && h > 0;
+                    }
+                }
+                catch { return false; }
+            }
+        }
+
+        static string JsStr(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "").Replace("\n", "\\n").Replace("'", "\\'");
+        }
+
+        static string HtmlEnc(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+        }
 
         static string Attr(XmlNode n, string name)
         {

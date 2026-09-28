@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8" />
+    <title>畫冊</title>
+    <style>
+        html, body {
+            margin: 0;
+            width: 100%;
+            min-height: 100%;
+        }
+        .head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 20px 10px;
+            font-size: 18px;
+        }
+        .count { opacity: 0.7; font-size: 16px; }
+        .hint { margin-left: auto; opacity: 0.55; font-size: 14px; }
+        .hide-small-label { font-size: 14px; opacity: 0.85; white-space: nowrap; }
+        body.hide-small [small] { display: none !important; }
+        .wrap {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 8px 12px 24px;
+            align-items: flex-start;
+            align-content: flex-start;
+        }
+        .tile {
+            box-sizing: border-box;
+            flex: 0 0 168px;
+            width: 168px;
+            height: 228px;
+            margin: 4px;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+            background: rgba(31,26,22,0.92);
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .tile img {
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 0;
+            width: calc(100% - 16px);
+            margin: 8px 8px 0;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .tile .cap {
+            flex: 0 0 auto;
+            font-size: 11px;
+            opacity: 0.72;
+            text-align: center;
+            padding: 4px 8px 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .empty {
+            display: none;
+            text-align: center;
+            padding: 20vh 12px;
+            font-size: 16px;
+            opacity: 0.55;
+        }
+        #lightbox {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 40;
+        }
+        #lb_img {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 52px;
+            margin: auto;
+            max-width: 100%;
+            max-height: calc(100% - 52px);
+            object-fit: contain;
+        }
+        .lb-bar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            color: #fff;
+            font-size: 14px;
+        }
+        .lb-bar button {
+            cursor: pointer;
+            padding: 6px 14px;
+        }
+        .lb-hint { opacity: 0.7; }
+    </style>
+</head>
+<body class="hide-small">
+    <div class="head">
+        <span>插圖</span>
+        <span class="count" id="album_count"></span>
+        <label class="hide-small-label"><input id="hide_small_input" type="checkbox" onchange="ApplyHide()" checked /> Hide Small Image</label>
+        <span class="hint">點選放大　連點前往正文　Esc 返回</span>
+    </div>
+    <div class="wrap" id="album_wrap">{0}</div>
+    <div class="empty" id="album_empty">這本書沒有達到門檻的插圖</div>
+    <div id="lightbox">
+        <img id="lb_img" alt="" />
+        <div class="lb-bar">
+            <span class="lb-hint">← → 鄰近</span>
+            <button type="button" onclick="JumpCurrent()">前往此頁</button>
+            <span class="lb-hint">連點前往正文　Esc 返回相冊</span>
+        </div>
+    </div>
+    <script>
+        var PD = parent.document;
+        var items = {1};
+        var idx = 0;
+        var clickTimer = null;
+        var wrap = document.getElementById("album_wrap");
+        var empty = document.getElementById("album_empty");
+        var lightbox = document.getElementById("lightbox");
+        var lbImg = document.getElementById("lb_img");
+        var hideSmallInput = document.getElementById("hide_small_input");
+        var filterW = 500, filterH = 500;
+        function IsHidden(i) {
+            return hideSmallInput.checked && items[i] && items[i].small;
+        }
+        function VisibleCount() {
+            var c = 0;
+            for (var i = 0; i < items.length; i++) if (!IsHidden(i)) c++;
+            return c;
+        }
+        function UpdateCount() {
+            var c = VisibleCount();
+            document.getElementById("album_count").textContent = c ? (c + " 張") : "";
+            var none = items.length === 0 || (hideSmallInput.checked && c === 0);
+            wrap.style.display = none ? "none" : "flex";
+            empty.style.display = none ? "block" : "none";
+        }
+        function ApplyHide() {
+            document.body.className = hideSmallInput.checked ? "hide-small" : "";
+            UpdateCount();
+        }
+        ApplyHide();
+        [].forEach.call(wrap.querySelectorAll(".tile"), function (tile, i) {
+            var img = tile.getElementsByTagName("img")[0];
+            if (!img || !items[i]) return;
+            function noteSize() {
+                var w = img.naturalWidth, h = img.naturalHeight;
+                if (!w || !h) return;
+                if (w < filterW || h < filterH) {
+                    items[i].small = true;
+                    tile.setAttribute("small", "");
+                    UpdateCount();
+                }
+            }
+            img.onload = noteSize;
+            if (img.complete) noteSize();
+        });
+        UpdateCount();
+        function TileClick(i) {
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+                JumpAt(i);
+                return;
+            }
+            clickTimer = setTimeout(function () {
+                clickTimer = null;
+                OpenAt(i);
+            }, 280);
+        }
+        function OpenAt(i) {
+            if (i < 0 || i >= items.length) return;
+            if (IsHidden(i)) return;
+            idx = i;
+            lbImg.src = items[i].src;
+            lightbox.style.display = "block";
+        }
+        function CloseLightbox() {
+            lightbox.style.display = "none";
+        }
+        function JumpAt(i) {
+            if (i < 0 || i >= items.length) return;
+            var it = items[i];
+            PD.Link(it.href, it.selector || "");
+            PD.CloseSpFrame();
+            PD.MenuClose();
+            PD.defaultView.focus();
+        }
+        function JumpCurrent() { JumpAt(idx); }
+        function Step(d) {
+            if (lightbox.style.display !== "block") return;
+            var j = idx + d;
+            while (j >= 0 && j < items.length && IsHidden(j)) j += d;
+            OpenAt(j);
+        }
+        lightbox.onclick = function (e) {
+            if (e.target === lightbox) CloseLightbox();
+        };
+        lbImg.ondblclick = function (e) {
+            if (e.stopPropagation) e.stopPropagation();
+            JumpCurrent();
+        };
+        document.addEventListener("keydown", function (e) {
+            if (lightbox.style.display === "block") {
+                if (e.key === "Escape") { CloseLightbox(); e.preventDefault(); return; }
+                if (e.key === "ArrowLeft" || e.key === "PageUp") { Step(-1); e.preventDefault(); return; }
+                if (e.key === "ArrowRight" || e.key === "PageDown") { Step(1); e.preventDefault(); return; }
+                if (e.key === "Enter" || e.key === "g" || e.key === "G") { JumpCurrent(); e.preventDefault(); return; }
+            } else if (e.key === "Escape") {
+                PD.CloseSpFrame();
+            }
+        });
+    </script>
+    <script src="aeroepub://domain/viewer/sp-page.js"></script>
+</body>
+</html>

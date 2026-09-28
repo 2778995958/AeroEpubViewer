@@ -16,6 +16,15 @@ function ImageQuickView() {
     }
     sp_frame.contentDocument.scrollingElement.scrollTop = sp_page_scroll;
 }
+function ImageAlbum() {
+    document.MenuClose();
+    sp_frame_c.style.display = "block";
+    if (sp_frame.src != "aeroepub://domain/app/ImageAlbum") {
+        sp_frame.src = "aeroepub://domain/app/ImageAlbum";
+        sp_page_scroll = 0;
+    }
+    try { sp_frame.contentDocument.scrollingElement.scrollTop = sp_page_scroll; } catch (e) { }
+}
 function BookInfo() {
     document.MenuClose();
 

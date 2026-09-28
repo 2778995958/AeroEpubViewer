@@ -222,6 +222,7 @@
     <EmbeddedResource Include="Res\viewer_paged.js" />
     <EmbeddedResource Include="Res\viewer_sp_frame.js" />
     <EmbeddedResource Include="Res\image-quick-view.html" />
+    <EmbeddedResource Include="Res\image-album.html" />
     <EmbeddedResource Include="Res\search-service.html" />
     <EmbeddedResource Include="Res\sp-page.js" />
   </ItemGroup>
