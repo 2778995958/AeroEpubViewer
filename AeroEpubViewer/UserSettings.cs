@@ -19,6 +19,7 @@ namespace AeroEpubViewer
         public static string theme = "default";
         public static string warmColor = "#ffe6a0";
         public static string uiLanguage = "ja";
+        public static bool paged = true;
 
         //font
         public static int bookFontSize = 26;
@@ -38,7 +39,8 @@ namespace AeroEpubViewer
                 $"\"bookFontSize\":{bookFontSize}," +
                 $"\"viewerTheme\":\"{theme}\"," +
                 $"\"warmColor\":\"{warmColor}\"," +
-                $"\"uiLanguage\":\"{uiLanguage}\""
+                $"\"uiLanguage\":\"{uiLanguage}\"," +
+                $"\"paged\":{paged.ToString().ToLowerInvariant()}"
                 + "}";
         }
         public static void ReadSettings()
@@ -87,6 +89,9 @@ namespace AeroEpubViewer
                                     if (uiLanguage != "ja" && uiLanguage != "zh-TW" && uiLanguage != "zh-CN" && uiLanguage != "en")
                                         uiLanguage = "ja";
                                     break;
+                                case "Paged":
+                                    if (!bool.TryParse(para[1], out paged)) paged = true;
+                                    break;
                             }
                     }
             }
@@ -117,6 +122,7 @@ namespace AeroEpubViewer
                 writer.WriteLine($"Theme, {theme}");
                 writer.WriteLine($"WarmColor, {warmColor}");
                 writer.WriteLine($"UiLanguage, {uiLanguage}");
+                writer.WriteLine($"Paged, {paged}");
             }
 
             // Write font settings

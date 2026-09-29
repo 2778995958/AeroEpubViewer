@@ -1014,6 +1014,8 @@ function TogglePaged() {
     }
     paged = !paged;
     document.paged = paged;
+    if (typeof AppCall === "function")
+        AppCall("aeroepub://domain/app/paged/" + (paged ? "true" : "false"));
     UpdatePagedLabel();
     if (pageMask) pageMask.style.display = "none";
     ReleaseFrames();

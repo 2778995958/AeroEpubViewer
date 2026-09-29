@@ -115,6 +115,9 @@ namespace AeroEpubViewer
             chromium.ExecuteScriptAsync(Program.epub.ShouldDualPage()
                 ? "dualPage=true;document.dualPage=true;"
                 : "dualPage=false;document.dualPage=false;");
+            chromium.ExecuteScriptAsync(UserSettings.paged
+                ? "paged=true;document.paged=true;"
+                : "paged=false;document.paged=false;");
             string userDataCmd = string.Format("LoadUserSettings({0});", UserSettings.GetJson());
             string initCmd = "";
             string spreadDataCmd = "";

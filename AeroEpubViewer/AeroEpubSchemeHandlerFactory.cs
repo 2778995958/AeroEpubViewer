@@ -164,6 +164,15 @@ namespace AeroEpubViewer
                                     UserSettings.WriteSettings();
                                     return ResourceHandler.FromString("OK");
                                 }
+                            case "paged":
+                                {
+                                    bool value;
+                                    if (args.Length < 2 || !bool.TryParse(args[1], out value))
+                                        return ResourceHandler.FromString("Invalid paged value");
+                                    UserSettings.paged = value;
+                                    UserSettings.WriteSettings();
+                                    return ResourceHandler.FromString("OK");
+                                }
                             case "ImageQuickView":
                                 return ResourceHandler.FromString(SpecialPageService.ImageQuickView());
                             case "ImageAlbum":

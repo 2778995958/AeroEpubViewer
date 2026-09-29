@@ -93,7 +93,10 @@ function FixImageOnlyPage() {
     let images = document.body.querySelectorAll("img");
     let svgs = document.body.querySelectorAll("svg");
     if (images.length + svgs.length != 1 || VisibleTextOnly() != "") return;
-    var par = "xMidYMid meet";
+    // "meet" 會等比縮放並置中，SVG 因此不會填滿 iframe，
+    // 左右各留下亞像素空隙，兩張配對頁並排時就會在接縫處露出底色。
+    // "none" 讓 SVG 鋪滿整個 iframe，與 object-fit:fill 的圖片頁行為一致。
+    var par = "none";
     [].forEach.call(svgs, function (s) { s.setAttribute("preserveAspectRatio", par); });
     var objPos = "center center";
     var fit = "fill";
