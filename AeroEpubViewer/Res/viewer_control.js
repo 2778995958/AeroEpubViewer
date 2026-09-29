@@ -74,7 +74,6 @@ function BindWheel(el) {
 BindWheel(document);
 BindWheel(document.getElementById("mouseListener"));
 BindWheel(document.body);
-BindWheel(document.getElementById("menuHit"));
 BindWheel(document.getElementById("pageMask"));
 BindWheel(document.getElementById("openMask"));
 BindWheel(document.getElementById("sp_frame_general_container"));
@@ -94,7 +93,6 @@ function ViewerBlankClick(e) {
         return;
     }
 }
-document.getElementById("menuHit").onmouseup = ViewerBlankClick;
 document.getElementById("mouseListener").onmouseup = ViewerBlankClick;
 function IsTypingTarget(el) {
     if (!el) return false;
