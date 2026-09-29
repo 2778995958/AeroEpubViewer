@@ -64,6 +64,12 @@ document.addEventListener("touchend", function (e) { PD.OnFrameTouchEnd(); });
 document.addEventListener("touchmove", function (e) { PD.OnFrameTouchMove(e.touches[0].screenX, e.touches[0].screenY); });
 function AppendThemeQuery(url) {
     if (!url) return url;
+    // 由 C# 產生的絕對網址（例如合成跨頁 SVG 的 <image>）已含正確路徑，
+    // 這裡只負責附加 theme 與 cache-busting 參數，不重複加 "?"。
+    if (url.indexOf("aeroepub://") === 0) {
+        var q = url.indexOf("?");
+        if (q >= 0) url = url.substring(0, q);
+    }
     var sep = url.indexOf("?") >= 0 ? "&" : "?";
     return url + sep + PD.theme.name + "&g=" + (PD.bookGen || 0);
 }
@@ -71,10 +77,36 @@ function AppendThemeQuery(url) {
 [].forEach.call(document.getElementsByTagName("image"), function (e) {
     var href = e.getAttribute("xlink:href") || e.getAttribute("href") || "";
     if (!href) return;
-    var next = AppendThemeQuery(href);
+    // 相對路徑需先轉絕對（瀏覽器自動解析），再附加參數
+    if (href.indexOf("://") < 0) {
+        var abs = new URL(href, document.baseURI || window.location.href).href;
+        var next = AppendThemeQuery(abs);
+    } else {
+        var next = AppendThemeQuery(href);
+    }
     e.setAttribute("xlink:href", next);
     e.setAttribute("href", next);
 });
+
+// SVG <image> 無法載入自訂 scheme，改用 <img> 標籤
+// 只處理單一圖片的 SVG 頁面（固定版面 EPUB 常見結構）
+var svgs = document.querySelectorAll("svg");
+for (var i = 0; i < svgs.length; i++) {
+    var images = svgs[i].querySelectorAll("image");
+    if (images.length === 1 && images[0].parentElement === svgs[i]) {
+        // 單一 <image> 直接在 <svg> 下
+        var imgSrc = images[0].getAttribute("href") || images[0].getAttribute("xlink:href") || "";
+        if (imgSrc && imgSrc.indexOf("aeroepub://") === 0) {
+            var img = document.createElement("img");
+            img.src = imgSrc;
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+            img.style.display = "block";
+            svgs[i].parentElement.replaceChild(img, svgs[i]);
+        }
+    }
+}
 function VisibleTextOnly() {
     let text = "";
     let walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {

@@ -67,7 +67,8 @@ document.ContextMenu = function (e, left, top, frame) {
             break;
         }
         if (tag == "IMAGE") {
-            inner += "<div onclick=\"CopyImage('" + ReferPath(frame.src, img.getAttribute("xlink:href")) + "')\">" + GetStringByName("CopyImage")+"</div>";
+            let href = img.getAttribute("href") || img.getAttribute("xlink:href") || "";
+            inner += "<div onclick=\"CopyImage('" + ReferPath(frame.src, href) + "')\">" + GetStringByName("CopyImage")+"</div>";
             break;
         }
         img = img.parentElement;

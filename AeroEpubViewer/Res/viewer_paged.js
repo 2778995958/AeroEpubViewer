@@ -564,6 +564,76 @@ function SpreadPartner(frame) {
     return FindFrame(idx);
 }
 
+function CreateSyntheticSpreadFrame(leftIndex, rightIndex) {
+    var lf = FindFrame(leftIndex);
+    var rf = FindFrame(rightIndex);
+    if (!lf || !rf) return null;
+    var ln = CaptureImageNaturalSize(lf);
+    var rn = CaptureImageNaturalSize(rf);
+    if (!ln || !rn) return null;
+    var src = "aeroepub://domain/viewer/spread-svg?li=" + leftIndex +
+        "&ri=" + rightIndex +
+        "&lw=" + ln.w + "&lh=" + ln.h +
+        "&rw=" + rn.w + "&rh=" + rn.h;
+    loading++;
+    var page = document.createElement("iframe");
+    page.pos = 0;
+    page.urlIndex = leftIndex;
+    page.syntheticSpread = true;
+    page.spreadPartnerIndex = rightIndex;
+    page.spread = (spreadList && spreadList[leftIndex]) || "";
+    page.pendingLoad = true;
+    page.imagePage = true;
+    page.imgNatW = ln.w + rn.w;
+    page.imgNatH = Math.max(ln.h, rn.h);
+    page.style.visibility = "hidden";
+    page.firstFrame = (leftIndex == 0);
+    page.lastFrame = (rightIndex == urlList.length - 1);
+    page.scrolling = "no";
+    page.frameBorder = "0";
+    page.src = src;
+    direction.SetPosStyle(page);
+    page.onload = function () {
+        if (page.discarded) return;
+        page.pages = [FullFramePage(page)];
+        page.pageIndex = 0;
+        page.num = 0;
+        page.totalPage = 1;
+        FinishLoad(page);
+        try {
+            if (paged) {
+                ApplyImagePageVisual(page);
+                page.style.visibility = "visible";
+            } else {
+                page.style.visibility = "visible";
+                Scroll(0);
+                SetScrollBar();
+            }
+        } catch (err) { console.log(err); }
+        page.onload = null;
+    };
+    document.body.appendChild(page);
+    return page;
+}
+
+function FindSyntheticSpread(leftIndex, rightIndex) {
+    for (var i = 0; i < frameList.length; i++) {
+        var f = frameList[i];
+        if (f.syntheticSpread && f.urlIndex === leftIndex && f.spreadPartnerIndex === rightIndex) return f;
+    }
+    return null;
+}
+
+function SpreadPairFor(frame) {
+    if (!dualPage || !paged || !frame || !IsImageLike(frame.urlIndex) || IsForcedCenter(frame.urlIndex)) return null;
+    var mate = PartnerIndex(frame);
+    if (mate == null) return null;
+    var a = frame.urlIndex;
+    var b = mate;
+    if (SpreadSide(a) === "left") return { left: a, right: b };
+    return { left: b, right: a };
+}
+
 function EnsurePageMask() {
     if (pageMask) return pageMask;
     pageMask = document.getElementById("pageMask");
@@ -671,14 +741,40 @@ function ApplyImagePageVisual(frame) {
     frame.style.setProperty("min-height", "0", "important");
     var nat = CaptureImageNaturalSize(frame);
     var box = ContentBox();
+    var maxH = box.height;
+    var maxW = box.width;
+    var w, h, left, top;
+    if (frame.syntheticSpread) {
+        // The synthetic frame already contains both pages in one coordinate
+        // system, so it is sized as a single unit and no seam can appear.
+        if (nat && nat.w > 0 && nat.h > 0) {
+            h = maxH;
+            w = h * nat.w / nat.h;
+            if (w > maxW) {
+                w = maxW;
+                h = w * nat.h / nat.w;
+            }
+        } else {
+            w = maxW;
+            h = maxH;
+        }
+        w = Math.round(w);
+        h = Math.round(h);
+        left = Math.round((maxW - w) / 2);
+        top = box.top + Math.round((maxH - h) / 2);
+        frame.style.width = w + "px";
+        frame.style.height = h + "px";
+        frame.style.top = top + "px";
+        frame.style.left = left + "px";
+        frame.style.right = "auto";
+        frame.style.bottom = "auto";
+        return;
+    }
     var pairIndex = PartnerIndex(frame);
     var align = ImageAlign(frame);
     var partner = pairIndex == null ? null : FindFrame(pairIndex);
     var nat2 = pairIndex == null ? null : (partner && CaptureImageNaturalSize(partner));
     var wantDual = pairIndex != null && align !== "center" && nat && nat2;
-    var maxH = box.height;
-    var maxW = box.width;
-    var w, h, left, top;
     if (wantDual) {
         var nw = nat.w, nh = nat.h;
         var nw2 = nat2.w, nh2 = nat2.h;
@@ -782,6 +878,8 @@ function EnsureFrame(urlIndex) {
 
 function ShowPage(frame, idx) {
     if (!frame) return;
+    var synth = ShowSyntheticSpread(frame);
+    if (synth) return;
     if (!frame.pages || !frame.pages.length) BuildPageTable(frame);
     if (!frame.pages || !frame.pages.length) frame.pages = [FullFramePage(frame)];
     if (idx < 0) idx = 0;
@@ -807,6 +905,40 @@ function ShowPage(frame, idx) {
     if (typeof EnsureViewerFocus === "function") EnsureViewerFocus();
 }
 
+// When a pair of image-only pages can be merged, present them as one synthetic
+// SVG frame so the gutter between the two pages is a single coordinate and can
+// never leak a sub-pixel seam. Returns the synthetic frame when it took over.
+function ShowSyntheticSpread(frame) {
+    var pair = SpreadPairFor(frame);
+    if (!pair) {
+        if (frame.syntheticSpread) return frame;
+        return null;
+    }
+    var leftF = EnsureFrame(pair.left);
+    var rightF = EnsureFrame(pair.right);
+    if (!leftF || !rightF) return null;
+    if (!CaptureImageNaturalSize(leftF) || !CaptureImageNaturalSize(rightF)) return null;
+    var synth = FindSyntheticSpread(pair.left, pair.right);
+    if (!synth) {
+        synth = CreateSyntheticSpreadFrame(pair.left, pair.right);
+        if (!synth) return null;
+        frameList.push(synth);
+    }
+    currentFrame = synth;
+    document.currentFrame = synth;
+    synth.pageIndex = 0;
+    synth.num = 0;
+    synth.totalPage = 1;
+    for (var i = 0; i < frameList.length; i++) {
+        ApplyPageVisual(frameList[i], frameList[i] === synth, null);
+    }
+    UpdatePageMask(synth, null);
+    if (typeof SetScrollBar === "function") SetScrollBar();
+    if (typeof ScrollBarShow === "function") ScrollBarShow();
+    if (typeof EnsureViewerFocus === "function") EnsureViewerFocus();
+    return synth;
+}
+
 function RefreshImageSpread(frame) {
     if (!frame || frame.discarded || !currentFrame) return;
     var current = currentFrame;
@@ -821,12 +953,13 @@ function RefreshImageSpread(frame) {
 function CheckLoadPaged() {
     if (!currentFrame) return;
     var i = currentFrame.urlIndex;
+    var synth = currentFrame.syntheticSpread ? currentFrame : null;
     var have = {};
     var k;
     for (k = 0; k < frameList.length; k++) have[frameList[k].urlIndex] = frameList[k];
     var keep = {};
     keep[i] = true;
-    var p = PartnerIndex(currentFrame);
+    var p = synth ? synth.spreadPartnerIndex : PartnerIndex(currentFrame);
     if (p != null) keep[p] = true;
     var reach = currentFrame.imagePage ? 3 : 1;
     function need(idx) {
@@ -849,10 +982,18 @@ function CheckLoadPaged() {
     }
     if (p != null) need(p);
     for (k = frameList.length - 1; k >= 0; k--) {
-        var u = frameList[k].urlIndex;
+        var f = frameList[k];
+        var u = f.urlIndex;
+        if (f.syntheticSpread) {
+            if (!synth || f !== synth) {
+                DropFrame(f);
+                frameList.splice(k, 1);
+            }
+            continue;
+        }
         if (keep[u]) continue;
         if (Math.abs(u - i) > reach) {
-            DropFrame(frameList[k]);
+            DropFrame(f);
             frameList.splice(k, 1);
         }
     }
