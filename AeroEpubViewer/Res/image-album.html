@@ -68,6 +68,22 @@
             font-size: 16px;
             opacity: 0.55;
         }
+        #context_menu {
+            position: absolute;
+            display: none;
+            width: 200px;
+            border: solid;
+            z-index: 50;
+            background: rgba(31,26,22,0.95);
+            color: #eee;
+        }
+        #context_menu > div {
+            cursor: pointer;
+            padding: 8px 12px;
+        }
+        #context_menu > div:hover {
+            background: rgba(255,255,255,0.15);
+        }
         #lightbox {
             display: none;
             position: fixed;
@@ -110,6 +126,7 @@
     </style>
 </head>
 <body class="hide-small">
+    <div id="context_menu"></div>
     <div class="head">
         <span id="album_title">挿絵</span>
         <span class="count" id="album_count"></span>
@@ -196,6 +213,14 @@
             }
             img.onload = noteSize;
             if (img.complete) noteSize();
+            // 為縮圖添加右鍵處理
+            tile.onmouseup = function (e) {
+                if (e.button == 2 && items[i] && items[i].src) {
+                    if (window.ContextMenu) {
+                        ContextMenu(img, e.pageX, e.pageY, window.frameElement);
+                    }
+                }
+            };
         });
         UpdateCount();
         function TileClick(i) {
@@ -237,16 +262,18 @@
         }
         lightbox.onclick = function (e) {
             if (e.target === lightbox) CloseLightbox();
+            if (window.TryCloseContextMenu && TryCloseContextMenu()) return;
         };
         lbImg.ondblclick = function (e) {
             if (e.stopPropagation) e.stopPropagation();
             JumpCurrent();
         };
-        lbImg.oncontextmenu = function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (lbImg.src) {
-                CopyImage(lbImg.src);
+        // 確保燈箱中的圖片也能觸發右鍵選單
+        lbImg.onmouseup = function (e) {
+            if (e.button == 2 && lbImg.src) {
+                if (window.ContextMenu) {
+                    ContextMenu(lbImg, e.pageX, e.pageY, window.frameElement);
+                }
             }
         };
         document.addEventListener("keydown", function (e) {
