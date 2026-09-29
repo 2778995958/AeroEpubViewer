@@ -242,6 +242,13 @@
             if (e.stopPropagation) e.stopPropagation();
             JumpCurrent();
         };
+        lbImg.oncontextmenu = function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (lbImg.src) {
+                CopyImage(lbImg.src);
+            }
+        };
         document.addEventListener("keydown", function (e) {
             if (lightbox.style.display === "block") {
                 if (e.key === "Escape") { CloseLightbox(); e.preventDefault(); return; }

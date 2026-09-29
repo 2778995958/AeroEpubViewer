@@ -7,6 +7,32 @@ function CopyImage(url) {
     AppCall("aeroepub://domain/app/CopyImage/" + path);
     document.TryCloseContextMenu();
 }
+function CopyCanvas() {
+    // 找到 Canvas 元素（從 tempTargetElement 開始往上找）
+    let canvas = tempTargetElement;
+    while (canvas && canvas.tagName && canvas.tagName.toUpperCase() !== "CANVAS") {
+        canvas = canvas.parentElement;
+    }
+
+    if (canvas && canvas.tagName && canvas.tagName.toUpperCase() === "CANVAS") {
+        // 將 Canvas 轉為 Blob 並使用臨時的全域變數傳遞
+        try {
+            canvas.toBlob(function(blob) {
+                let reader = new FileReader();
+                reader.onload = function() {
+                    // 將 Base64 資料暫存到全域變數
+                    window.__canvasImageData = reader.result;
+                    // 通知 C# 端來讀取
+                    AppCall("aeroepub://domain/app/CopyCanvasImage");
+                };
+                reader.readAsDataURL(blob);
+            }, 'image/png');
+        } catch(err) {
+            console.error('Canvas copy failed:', err);
+        }
+    }
+    document.TryCloseContextMenu();
+}
 function InspectElement() {
     console.log(tempTargetElement);
     Inspector();

@@ -345,6 +345,9 @@ namespace AeroEpubViewer
                             case "CopyImage":
                                 CopyImageToClipboard(uri.AbsolutePath.Substring("/app/CopyImage/".Length));
                                 return ResourceHandler.FromString("OK");
+                            case "CopyCanvasImage":
+                                CopyCanvasImageToClipboard();
+                                return ResourceHandler.FromString("OK");
                             case "UserBookCss":
                                 return ResourceHandler.FromString(UserSettings.userBookCssContent, null, true, "text/css");
                             case "UserBookCssRtl":
@@ -428,7 +431,75 @@ namespace AeroEpubViewer
             }
             catch (Exception ex)
             {
-                Log.log("[Error]CopyImage " + ex);
+                Log.log("[Error]CopyImage " + ex.ToString());
+            }
+        }
+
+        static void CopyCanvasImageToClipboard()
+        {
+            try
+            {
+                var ui = EpubViewer.chromium;
+                if (ui == null || ui.IsDisposed || !ui.IsHandleCreated)
+                {
+                    Log.log("[Error]CopyCanvasImage no UI");
+                    return;
+                }
+
+                ui.BeginInvoke((Action)(async () =>
+                {
+                    try
+                    {
+                        // 從 JavaScript 端讀取暫存的 Canvas 資料
+                        var result = await ui.EvaluateScriptAsync("window.__canvasImageData");
+                        if (!result.Success || result.Result == null)
+                        {
+                            Log.log("[Error]CopyCanvasImage no data");
+                            return;
+                        }
+
+                        string dataUrl = result.Result.ToString();
+
+                        // 清除暫存
+                        await ui.EvaluateScriptAsync("delete window.__canvasImageData");
+
+                        // 解析 data:image/png;base64,xxxxx
+                        if (!dataUrl.StartsWith("data:image/"))
+                        {
+                            Log.log("[Error]CopyCanvasImage invalid data URL");
+                            return;
+                        }
+
+                        int commaIndex = dataUrl.IndexOf(',');
+                        if (commaIndex < 0)
+                        {
+                            Log.log("[Error]CopyCanvasImage no comma in data URL");
+                            return;
+                        }
+
+                        string base64Data = dataUrl.Substring(commaIndex + 1);
+                        byte[] imageBytes = System.Convert.FromBase64String(base64Data);
+
+                        var bmp = BitmapFrom(imageBytes);
+                        if (bmp == null)
+                        {
+                            Log.log("[Error]CopyCanvasImage decode failed");
+                            return;
+                        }
+
+                        try { System.Windows.Forms.Clipboard.SetImage(bmp); }
+                        catch (Exception ex) { Log.log("[Error]CopyCanvasImage clipboard " + ex.Message); }
+                        finally { bmp.Dispose(); }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.log("[Error]CopyCanvasImage " + ex.ToString());
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                Log.log("[Error]CopyCanvasImage " + ex.ToString());
             }
         }
 

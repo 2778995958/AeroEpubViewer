@@ -71,6 +71,10 @@ document.ContextMenu = function (e, left, top, frame) {
             inner += "<div onclick=\"CopyImage('" + ReferPath(frame.src, href) + "')\">" + GetStringByName("CopyImage")+"</div>";
             break;
         }
+        if (tag == "CANVAS") {
+            inner += "<div onclick=\"CopyCanvas()\">" + GetStringByName("CopyImage")+"</div>";
+            break;
+        }
         img = img.parentElement;
     }
     contextMenu.innerHTML = inner;
