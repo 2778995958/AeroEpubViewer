@@ -105,6 +105,7 @@
                         direction.AdjustFrameSize(f);
                         if (paged) {
                             if (typeof ApplyPagedFrame === "function") ApplyPagedFrame(f, false, 0, null);
+                            if (typeof TryFinishSpreadJump === "function") TryFinishSpreadJump();
                         } else {
                             Scroll(0);
                             SetScrollBar();
@@ -183,6 +184,7 @@ transform-origin: 50vw; \
                         direction.AdjustFrameSize(f);
                         if (paged) {
                             if (typeof ApplyPagedFrame === "function") ApplyPagedFrame(f, false, 0, null);
+                            if (typeof TryFinishSpreadJump === "function") TryFinishSpreadJump();
                         } else {
                             Scroll(0);
                             SetScrollBar();
@@ -239,6 +241,7 @@ transform-origin: 50vw; \
             if (!spreadList) spreadList = [];
             urlList = _urlList;
             spreadMates = BuildSpreadMates();
+            if (typeof RefreshScrollBarMax === "function") RefreshScrollBarMax();
             document.direction = direction;
             document.paged = paged;
             document.dualPage = dualPage;
@@ -308,6 +311,7 @@ transform-origin: 50vw; \
                     // Image-only reflowable pages are not known when Init builds the mate table.
                     // Rebuild it after each frame reveals its actual page kind.
                     if (typeof BuildSpreadMates === "function") spreadMates = BuildSpreadMates();
+                    if (typeof RefreshScrollBarMax === "function") RefreshScrollBarMax();
                     let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
                     let wm = bodyComputedStyle.getPropertyValue("writing-mode");
                     if (direction == direction_rtl && wm != "vertical-rl") {

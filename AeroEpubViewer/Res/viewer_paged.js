@@ -564,9 +564,41 @@ function SpreadPartner(frame) {
     return FindFrame(idx);
 }
 
+function OnSpreadReady(frameEl) {
+    if (!frameEl || frameEl.discarded) return;
+    frameEl.canvasReady = true;
+    if (frameList.indexOf(frameEl) < 0) return;
+    if (frameEl.spreadJumpGen && frameEl.spreadJumpGen !== spreadJumpGen) return;
+    var wanted = frameEl.syntheticSpread && spreadJumpLeft != null &&
+        frameEl.urlIndex === spreadJumpLeft && frameEl.spreadPartnerIndex === spreadJumpRight;
+    if (spreadJumpLeft != null && !wanted) return;
+    if (frameEl !== currentFrame && !wanted) return;
+    currentFrame = frameEl;
+    document.currentFrame = frameEl;
+    frameEl.pendingShow = false;
+    RevealSynthetic(frameEl);
+    if (!wanted) return;
+    spreadJumpLeft = null;
+    spreadJumpRight = null;
+    var n;
+    for (n = 0; n < frameList.length; n++) frameList[n].jumpHold = false;
+    CheckLoadPaged();
+}
+window.OnSpreadReady = OnSpreadReady;
+
+function RevealSynthetic(frameEl) {
+    var i;
+    for (i = 0; i < frameList.length; i++) {
+        ApplyPageVisual(frameList[i], frameList[i] === frameEl, null);
+    }
+    UpdatePageMask(frameEl, null);
+    if (typeof SetScrollBar === "function") SetScrollBar();
+    if (typeof ScrollBarShow === "function") ScrollBarShow();
+}
+
 function CreateSyntheticSpreadFrame(leftIndex, rightIndex) {
-    var lf = FindFrame(leftIndex);
-    var rf = FindFrame(rightIndex);
+    var lf = FindRawFrame(leftIndex);
+    var rf = FindRawFrame(rightIndex);
     if (!lf || !rf) return null;
     var ln = CaptureImageNaturalSize(lf);
     var rn = CaptureImageNaturalSize(rf);
@@ -587,6 +619,8 @@ function CreateSyntheticSpreadFrame(leftIndex, rightIndex) {
     page.imgNatW = ln.w + rn.w;
     page.imgNatH = Math.max(ln.h, rn.h);
     page.style.visibility = "hidden";
+    page.canvasReady = false;
+    page.spreadJumpGen = spreadJumpGen;
     page.firstFrame = (leftIndex == 0);
     page.lastFrame = (rightIndex == urlList.length - 1);
     page.scrolling = "no";
@@ -603,7 +637,7 @@ function CreateSyntheticSpreadFrame(leftIndex, rightIndex) {
         try {
             if (paged) {
                 ApplyImagePageVisual(page);
-                page.style.visibility = "visible";
+                if (page.canvasReady && page === currentFrame) RevealSynthetic(page);
             } else {
                 page.style.visibility = "visible";
                 Scroll(0);
@@ -632,6 +666,108 @@ function SpreadPairFor(frame) {
     var b = mate;
     if (SpreadSide(a) === "left") return { left: a, right: b };
     return { left: b, right: a };
+}
+
+var spreadJumpLeft = null;
+var spreadJumpRight = null;
+var spreadJumpGen = 0;
+
+function FindRawFrame(urlIndex) {
+    var i;
+    for (i = 0; i < frameList.length; i++) {
+        var f = frameList[i];
+        if (!f || f.discarded || f.syntheticSpread) continue;
+        if (f.urlIndex == urlIndex) return f;
+    }
+    return null;
+}
+
+function SpreadPairForIndex(urlIndex) {
+    if (!dualPage || !paged || !IsImageLike(urlIndex) || IsForcedCenter(urlIndex)) return null;
+    var mate = spreadMates && spreadMates[urlIndex];
+    if (!(mate >= 0)) return null;
+    if (SpreadSide(urlIndex) === "left") return { left: urlIndex, right: mate };
+    return { left: mate, right: urlIndex };
+}
+
+function EnsureRawFrame(urlIndex) {
+    var f = FindRawFrame(urlIndex);
+    if (f) {
+        f.jumpHold = true;
+        return f;
+    }
+    f = CreateFrame(urlIndex, 0, null);
+    f.jumpHold = true;
+    frameList.push(f);
+    return f;
+}
+
+function ReleaseOldJump(left, right) {
+    var k;
+    for (k = frameList.length - 1; k >= 0; k--) {
+        var f = frameList[k];
+        if (!f.jumpHold || f === currentFrame) continue;
+        if (f.style.visibility !== "hidden") continue;
+        if (f.urlIndex === left || f.urlIndex === right) continue;
+        if (f.syntheticSpread && (f.spreadPartnerIndex === left || f.spreadPartnerIndex === right)) continue;
+        DropFrame(f);
+        frameList.splice(k, 1);
+    }
+}
+
+function JumpToSpine(anchor) {
+    var pair = SpreadPairForIndex(anchor);
+    if (!pair) return false;
+    if (currentFrame && currentFrame.syntheticSpread && currentFrame.canvasReady &&
+        currentFrame.urlIndex === pair.left && currentFrame.spreadPartnerIndex === pair.right) {
+        return true;
+    }
+    if (spreadJumpLeft === pair.left && spreadJumpRight === pair.right) return true;
+    spreadJumpGen++;
+    spreadJumpLeft = pair.left;
+    spreadJumpRight = pair.right;
+    if (typeof pagedPending !== "undefined") pagedPending = null;
+    ReleaseOldJump(pair.left, pair.right);
+    EnsureRawFrame(pair.left);
+    EnsureRawFrame(pair.right);
+    TryFinishSpreadJump();
+    return true;
+}
+
+function TryFinishSpreadJump() {
+    if (spreadJumpLeft == null || spreadJumpRight == null) return;
+    var left = spreadJumpLeft;
+    var right = spreadJumpRight;
+    var gen = spreadJumpGen;
+    var lf = FindRawFrame(left);
+    var rf = FindRawFrame(right);
+    if (!lf || !rf || lf.pendingLoad || rf.pendingLoad) return;
+    if (!CaptureImageNaturalSize(lf) || !CaptureImageNaturalSize(rf)) return;
+    if (gen !== spreadJumpGen) return;
+    var synth = FindSyntheticSpread(left, right);
+    if (!synth) {
+        synth = CreateSyntheticSpreadFrame(left, right);
+        if (!synth) return;
+        synth.jumpHold = true;
+        frameList.push(synth);
+    }
+    if (gen !== spreadJumpGen) return;
+    synth.spreadJumpGen = gen;
+    synth.pageIndex = 0;
+    synth.num = 0;
+    synth.totalPage = 1;
+    if (!synth.canvasReady) {
+        synth.pendingShow = true;
+        return;
+    }
+    currentFrame = synth;
+    document.currentFrame = synth;
+    RevealSynthetic(synth);
+    spreadJumpLeft = null;
+    spreadJumpRight = null;
+    var n;
+    for (n = 0; n < frameList.length; n++) frameList[n].jumpHold = false;
+    CheckLoadPaged();
 }
 
 function EnsurePageMask() {
@@ -833,9 +969,17 @@ function ApplyImagePageVisual(frame) {
 
 function ApplyPageVisual(frame, visible, pageBox) {
     if (!visible) {
+        frame.pendingShow = false;
         frame.style.visibility = "hidden";
         return;
     }
+    if (frame.syntheticSpread && !frame.canvasReady) {
+        frame.pendingShow = true;
+        ApplyImagePageVisual(frame);
+        frame.style.visibility = "hidden";
+        return;
+    }
+    frame.pendingShow = false;
     frame.style.visibility = "visible";
     if (!frame.pages || !frame.pages.length || frame.imagePage) {
         ApplyImagePageVisual(frame);
@@ -929,12 +1073,15 @@ function ShowSyntheticSpread(frame) {
     synth.pageIndex = 0;
     synth.num = 0;
     synth.totalPage = 1;
-    for (var i = 0; i < frameList.length; i++) {
-        ApplyPageVisual(frameList[i], frameList[i] === synth, null);
+    ApplyImagePageVisual(synth);
+    if (!synth.canvasReady) {
+        synth.pendingShow = true;
+        if (typeof SetScrollBar === "function") SetScrollBar();
+        if (typeof ScrollBarShow === "function") ScrollBarShow();
+        if (typeof EnsureViewerFocus === "function") EnsureViewerFocus();
+        return synth;
     }
-    UpdatePageMask(synth, null);
-    if (typeof SetScrollBar === "function") SetScrollBar();
-    if (typeof ScrollBarShow === "function") ScrollBarShow();
+    RevealSynthetic(synth);
     if (typeof EnsureViewerFocus === "function") EnsureViewerFocus();
     return synth;
 }
@@ -947,6 +1094,30 @@ function RefreshImageSpread(frame) {
     if (current === frame || currentMate === frame.urlIndex || frameMate === current.urlIndex) {
         ShowPage(current, current.pageIndex || 0);
         CheckLoadPaged();
+    }
+}
+
+function EnsureNearbySynthetics(center, reach) {
+    if (!dualPage || !paged || !(center >= 0)) return;
+    var lo = Math.max(0, center - reach);
+    var hi = Math.min(urlList.length - 1, center + reach);
+    var seen = {};
+    var idx;
+    for (idx = lo; idx <= hi; idx++) {
+        var f = FindFrame(idx);
+        if (!f || f.syntheticSpread || f.pendingLoad) continue;
+        var pair = SpreadPairFor(f);
+        if (!pair) continue;
+        var key = pair.left + ":" + pair.right;
+        if (seen[key]) continue;
+        seen[key] = true;
+        if (FindSyntheticSpread(pair.left, pair.right)) continue;
+        var lf = FindFrame(pair.left);
+        var rf = FindFrame(pair.right);
+        if (!lf || !rf || lf.pendingLoad || rf.pendingLoad) continue;
+        if (!CaptureImageNaturalSize(lf) || !CaptureImageNaturalSize(rf)) continue;
+        var synth = CreateSyntheticSpreadFrame(pair.left, pair.right);
+        if (synth) frameList.push(synth);
     }
 }
 
@@ -983,9 +1154,12 @@ function CheckLoadPaged() {
     if (p != null) need(p);
     for (k = frameList.length - 1; k >= 0; k--) {
         var f = frameList[k];
+        if (f.jumpHold && f !== currentFrame) continue;
         var u = f.urlIndex;
         if (f.syntheticSpread) {
-            if (!synth || f !== synth) {
+            var partner = f.spreadPartnerIndex;
+            var near = Math.abs(f.urlIndex - i) <= reach || (partner != null && Math.abs(partner - i) <= reach);
+            if (!near && f !== currentFrame && f.style.visibility === "hidden") {
                 DropFrame(f);
                 frameList.splice(k, 1);
             }
@@ -997,6 +1171,7 @@ function CheckLoadPaged() {
             frameList.splice(k, 1);
         }
     }
+    EnsureNearbySynthetics(i, reach);
 }
 
 function GoToChapterPage(urlIndex, pageIndex) {
@@ -1055,10 +1230,16 @@ function OnPagedFrameLoaded(frame, isPosRate, pos, selector) {
         CaptureImageNaturalSize(frame);
         ApplyPagedFrame(frame, isPosRate, pos, selector);
         RefreshImageSpread(frame);
+        if (currentFrame) EnsureNearbySynthetics(currentFrame.urlIndex, currentFrame.imagePage ? 3 : 1);
+        TryFinishSpreadJump();
     });
 }
 
 function ApplyPagedFrame(frame, isPosRate, pos, selector) {
+    if (frame && frame.jumpHold && frame !== currentFrame) {
+        frame.style.visibility = "hidden";
+        return;
+    }
     var keepIndex = (currentFrame === frame && frame.pages && frame.pages.length > 1) ? frame.pageIndex : null;
     var keepOffset = (keepIndex != null && frame.pages[keepIndex]) ? frame.pages[keepIndex].charOffset : null;
     BuildPageTable(frame);
@@ -1169,6 +1350,9 @@ function ToggleDualPage() {
     dualPage = !dualPage;
     document.dualPage = dualPage;
     UpdateDualLabel();
+    var hi;
+    for (hi = 0; hi < frameList.length; hi++) frameList[hi].jumpHold = false;
+    if (typeof RefreshScrollBarMax === "function") RefreshScrollBarMax();
     if (!paged) return;
     var f = currentFrame;
     if (!f) return;

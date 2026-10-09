@@ -251,7 +251,7 @@ namespace AeroEpubViewer
                             }
                             string split = (lw / totalW).ToString(System.Globalization.CultureInfo.InvariantCulture);
                             string canvasScript = @"
-<canvas id='c' data-left=""" + EscAttr(lHref) + @""" data-right=""" + EscAttr(rHref) + @""" data-split=""" + split + @""" data-lw=""" + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-lh=""" + lh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-rw=""" + rw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-rh=""" + rh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" width='" + totalW.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' height='" + totalH.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' style='width:100%;height:100%;display:block;'></canvas>
+<canvas id='c' data-left=""" + EscAttr(lHref) + @""" data-right=""" + EscAttr(rHref) + @""" data-split=""" + split + @""" data-lw=""" + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-lh=""" + lh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-rw=""" + rw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-rh=""" + rh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" width='" + totalW.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' height='" + totalH.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' style='width:100%;height:100%;display:block;visibility:hidden;'></canvas>
 <script>
 (function(){
     var c = document.getElementById('c');
@@ -263,16 +263,23 @@ namespace AeroEpubViewer
     var rightImg = new Image();
     var loaded = 0;
 
-    function draw() {
+    function finish() {
         loaded++;
-        if (loaded === 2) {
-            ctx.drawImage(leftImg, 0, 0, " + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", " + lh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @");
-            ctx.drawImage(rightImg, " + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", 0, " + rw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", " + rh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @");
-        }
+        if (loaded < 2) return;
+        try {
+            if (leftImg.naturalWidth) ctx.drawImage(leftImg, 0, 0, " + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", " + lh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @");
+            if (rightImg.naturalWidth) ctx.drawImage(rightImg, " + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", 0, " + rw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", " + rh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @");
+        } catch (e) {}
+        c.style.visibility = 'visible';
+        try {
+            if (window.parent && window.parent.OnSpreadReady) window.parent.OnSpreadReady(window.frameElement);
+        } catch (e) {}
     }
 
-    leftImg.onload = draw;
-    rightImg.onload = draw;
+    leftImg.onload = finish;
+    rightImg.onload = finish;
+    leftImg.onerror = finish;
+    rightImg.onerror = finish;
     leftImg.src = '" + lHref + @"';
     rightImg.src = '" + rHref + @"';
 })();
