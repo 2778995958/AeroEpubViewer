@@ -97,13 +97,9 @@
         #lb_img {
             position: absolute;
             left: 0;
-            right: 0;
             top: 0;
-            bottom: 52px;
-            margin: auto;
-            max-width: 100%;
-            max-height: calc(100% - 52px);
-            object-fit: contain;
+            max-width: none;
+            max-height: none;
         }
         .lb-bar {
             position: absolute;
@@ -221,6 +217,7 @@
                     }
                 }
             };
+            tile.onclick = function () { TileClick(i); };
         });
         UpdateCount();
         function TileClick(i) {
@@ -235,12 +232,27 @@
                 OpenAt(i);
             }, 280);
         }
+        function FitLb() {
+            var nw = lbImg.naturalWidth, nh = lbImg.naturalHeight;
+            var maxW = lightbox.clientWidth || window.innerWidth;
+            var maxH = (lightbox.clientHeight || window.innerHeight) - 52;
+            if (!nw || !nh || maxW < 1 || maxH < 1) return;
+            var s = Math.min(maxW / nw, maxH / nh);
+            var w = Math.max(1, Math.round(nw * s));
+            var h = Math.max(1, Math.round(nh * s));
+            lbImg.style.width = w + "px";
+            lbImg.style.height = h + "px";
+            lbImg.style.left = Math.round((maxW - w) / 2) + "px";
+            lbImg.style.top = Math.round((maxH - h) / 2) + "px";
+        }
         function OpenAt(i) {
             if (i < 0 || i >= items.length) return;
             if (IsHidden(i)) return;
             idx = i;
+            lbImg.onload = FitLb;
             lbImg.src = items[i].src;
             lightbox.style.display = "block";
+            if (lbImg.complete) FitLb();
         }
         function CloseLightbox() {
             lightbox.style.display = "none";
@@ -260,14 +272,37 @@
             while (j >= 0 && j < items.length && IsHidden(j)) j += d;
             OpenAt(j);
         }
+        var lbCloseTimer = null;
+        function ScheduleAlbumBack() {
+            if (lbCloseTimer) clearTimeout(lbCloseTimer);
+            lbCloseTimer = setTimeout(function () {
+                lbCloseTimer = null;
+                CloseLightbox();
+            }, 280);
+        }
         lightbox.onclick = function (e) {
-            if (e.target === lightbox) CloseLightbox();
             if (window.TryCloseContextMenu && TryCloseContextMenu()) return;
+            if (e.target.closest && e.target.closest(".lb-bar")) return;
+            var x = e.clientX / (lightbox.clientWidth || 1);
+            var onEmpty = e.target === lightbox;
+            if (onEmpty && x <= 0.2) { Step(-1); return; }
+            if (onEmpty && x >= 0.8) { Step(1); return; }
+            if (e.target === lbImg) { ScheduleAlbumBack(); return; }
+            if (onEmpty) CloseLightbox();
+        };
+        lightbox.onmousemove = function (e) {
+            if (e.target !== lightbox) { lightbox.style.cursor = ""; return; }
+            var x = e.clientX / (lightbox.clientWidth || 1);
+            lightbox.style.cursor = (x <= 0.2 || x >= 0.8) ? "pointer" : "default";
         };
         lbImg.ondblclick = function (e) {
+            if (lbCloseTimer) { clearTimeout(lbCloseTimer); lbCloseTimer = null; }
             if (e.stopPropagation) e.stopPropagation();
             JumpCurrent();
         };
+        window.addEventListener("resize", function () {
+            if (lightbox.style.display === "block") FitLb();
+        });
         // 確保燈箱中的圖片也能觸發右鍵選單
         lbImg.onmouseup = function (e) {
             if (e.button == 2 && lbImg.src) {

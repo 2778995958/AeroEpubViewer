@@ -354,3 +354,29 @@ navLabel:hover, #nav a:hover {
 #measure_container > div {
     background: #d57474;
 }
+
+#imageZoom {
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 60;
+    overflow: hidden;
+    background: rgba(0,0,0,0.92);
+}
+
+#imageZoomImg, #imageZoomImgR {
+    position: absolute;
+    left: 0;
+    top: 0;
+    max-width: none;
+    max-height: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+#imageZoomImgR {
+    display: none;
+}

@@ -148,3 +148,53 @@ function Href(e) {
 
 }
 document.body.oncopy = PD.FrameOnCopy;
+function ZoomSrc(e) {
+    var n = e.target;
+    while (n && n !== document) {
+        var tag = (n.tagName || "").toUpperCase();
+        if (tag === "IMG") {
+            var src = n.currentSrc || n.src || "";
+            if (src) return src;
+        }
+        if (tag === "IMAGE") {
+            var href = n.getAttribute("href") || n.getAttribute("xlink:href") || "";
+            if (href) return AppendThemeQuery(href);
+        }
+        if (tag === "CANVAS") {
+            var left = n.getAttribute("data-left");
+            var right = n.getAttribute("data-right");
+            if (left && right) {
+                var lw = parseFloat(n.getAttribute("data-lw"));
+                var lh = parseFloat(n.getAttribute("data-lh"));
+                var rw = parseFloat(n.getAttribute("data-rw"));
+                var rh = parseFloat(n.getAttribute("data-rh"));
+                if (!(lw > 0) || !(rw > 0)) {
+                    var split = parseFloat(n.getAttribute("data-split"));
+                    if (!(split > 0 && split < 1)) split = 0.5;
+                    lw = (n.width || 1) * split;
+                    rw = (n.width || 1) - lw;
+                    lh = rh = n.height || 1;
+                }
+                return {
+                    spread: true,
+                    left: AppendThemeQuery(left),
+                    right: AppendThemeQuery(right),
+                    lw: lw, lh: lh, rw: rw, rh: rh
+                };
+            }
+        }
+        n = n.parentElement;
+    }
+    return null;
+}
+document.addEventListener("dblclick", function (e) {
+    var src = ZoomSrc(e);
+    if (!src) return;
+    if (src.spread) {
+        if (!PD.ZoomSpread) return;
+    } else if (!PD.ZoomImage) return;
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    if (src.spread) PD.ZoomSpread(src);
+    else PD.ZoomImage(src);
+}, true);

@@ -25,7 +25,7 @@ var stringTable = [
     ["この本には閾値以上の挿絵がありません", "這本書沒有達到門檻的插圖", "这本书没有达到门槛的插图", "No illustrations above the size threshold"],
     ["← → 前後", "← → 鄰近", "← → 相邻", "← → Nearby"],
     ["このページへ", "前往此頁", "前往此页", "Go to page"],
-    ["ダブルクリックで本文　Esc でアルバムへ", "連點前往正文　Esc 返回相冊", "双击前往正文　Esc 返回相册", "Double-click to jump  Esc back to album"],
+    ["左右の余白で前後　ほかは戻る　ダブルクリックで本文", "左右空白換頁　其餘回到畫冊　連點前往正文", "左右空白换页　其余回到画册　双击前往正文", "Side margins turn pages  elsewhere back  double-click to jump"],
     ["開いています…", "開啟中…", "打开中…", "Opening…"],
     ["言語", "語言", "语言", "Language"],
     ["枚", "張", "张", ""]

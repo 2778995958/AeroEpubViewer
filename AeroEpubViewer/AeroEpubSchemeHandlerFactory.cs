@@ -245,8 +245,13 @@ namespace AeroEpubViewer
                             if (totalH <= 0) totalH = 1;
 
                             // 使用 Canvas 合成圖片以消除 SVG 的次像素縫隙
+                            string EscAttr(string s)
+                            {
+                                return (s ?? "").Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;");
+                            }
+                            string split = (lw / totalW).ToString(System.Globalization.CultureInfo.InvariantCulture);
                             string canvasScript = @"
-<canvas id='c' width='" + totalW.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' height='" + totalH.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' style='width:100%;height:100%;display:block;'></canvas>
+<canvas id='c' data-left=""" + EscAttr(lHref) + @""" data-right=""" + EscAttr(rHref) + @""" data-split=""" + split + @""" data-lw=""" + lw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-lh=""" + lh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-rw=""" + rw.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" data-rh=""" + rh.ToString(System.Globalization.CultureInfo.InvariantCulture) + @""" width='" + totalW.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' height='" + totalH.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"' style='width:100%;height:100%;display:block;'></canvas>
 <script>
 (function(){
     var c = document.getElementById('c');

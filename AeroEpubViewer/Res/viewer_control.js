@@ -100,6 +100,16 @@ function IsTypingTarget(el) {
     return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 document.keydown = function (e) {
+    var zoom = document.getElementById("imageZoom");
+    if (zoom && zoom.style.display === "block") {
+        if (e.key === "Escape" || e.key === "Enter") CloseZoomImage();
+        else if (e.key === "ArrowDown") PanZoomImage(0, -48);
+        else if (e.key === "ArrowUp") PanZoomImage(0, 48);
+        else if (e.key === "ArrowRight") PanZoomImage(-48, 0);
+        else if (e.key === "ArrowLeft") PanZoomImage(48, 0);
+        if (e.preventDefault) e.preventDefault();
+        return;
+    }
     if (typeof OverlayFrame === "function" && OverlayFrame()) {
         if (e.key === "Escape") {
             try {
