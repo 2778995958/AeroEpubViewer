@@ -12,8 +12,9 @@ function PageMargin() {
     return Math.max(28, Math.round(fs * 2));
 }
 
-function PageAvail() {
-    return Math.max(80, direction.GetWindowLength() - PageMargin() * 2);
+function PageAvail(dir) {
+    dir = dir || direction;
+    return Math.max(80, dir.GetWindowLength() - PageMargin() * 2);
 }
 
 function CopyRect(b) {
@@ -403,10 +404,11 @@ function BuildPageTable(frame) {
         frame.totalPage = 1;
         return;
     }
-    var rtl = (direction === direction_rtl);
-    var avail = PageAvail();
+    var fd = FrameDirection(frame);
+    var rtl = (fd === direction_rtl);
+    var avail = PageAvail(fd);
     FitImagesToPage(frame, avail, rtl);
-    direction.AdjustFrameSize(frame);
+    fd.AdjustFrameSize(frame);
     try {
         if (frame.contentWindow) frame.contentWindow.scrollTo(0, 0);
         if (frame.contentDocument && frame.contentDocument.documentElement) {
@@ -448,7 +450,7 @@ function PageIndexForSelector(frame, selector) {
 
 function PageIndexContaining(frame, r) {
     if (!frame.pages || !frame.pages.length) return 0;
-    var rtl = (direction === direction_rtl);
+    var rtl = (FrameDirection(frame) === direction_rtl);
     var mid = rtl ? ((r.left + r.right) / 2) : ((r.top + r.bottom) / 2);
     for (var i = 0; i < frame.pages.length; i++) {
         var p = frame.pages[i];
@@ -616,6 +618,7 @@ function CreateSyntheticSpreadFrame(leftIndex, rightIndex) {
     page.spread = (spreadList && spreadList[leftIndex]) || "";
     page.pendingLoad = true;
     page.imagePage = true;
+    SetFrameVertical(page, direction === direction_rtl);
     page.imgNatW = ln.w + rn.w;
     page.imgNatH = Math.max(ln.h, rn.h);
     page.style.visibility = "hidden";
@@ -795,8 +798,9 @@ function UpdatePageMask(frame, pg) {
         mask.style.display = "none";
         return;
     }
-    var avail = PageAvail();
-    var rtl = (direction === direction_rtl);
+    var fd = FrameDirection(frame);
+    var avail = PageAvail(fd);
+    var rtl = (fd === direction_rtl);
     var leftover = rtl ? (avail - (pg.right - pg.left)) : (avail - (pg.bottom - pg.top));
     if (leftover < 2) {
         mask.style.display = "none";
@@ -995,7 +999,8 @@ function ApplyPageVisual(frame, visible, pageBox) {
     var B = Math.max(0, Math.min(h, pg.bottom));
     if (R <= L) { L = 0; R = w; }
     if (B <= T) { T = 0; B = h; }
-    if (direction === direction_rtl) {
+    var fd = FrameDirection(frame);
+    if (fd === direction_rtl) {
         frame.style.left = "auto";
         frame.style.right = "0";
         frame.style.clipPath = "inset(0px " + (w - R) + "px 0px " + L + "px)";
@@ -1008,7 +1013,7 @@ function ApplyPageVisual(frame, visible, pageBox) {
         frame.style.clip = "rect(" + T + "px " + w + "px " + B + "px 0px)";
         frame.pos = -T + PageMargin();
     }
-    direction.SetPosStyle(frame);
+    fd.SetPosStyle(frame);
 }
 
 function EnsureFrame(urlIndex) {
@@ -1226,7 +1231,7 @@ function AfterImages(frame, cb) {
 function OnPagedFrameLoaded(frame, isPosRate, pos, selector) {
     AfterImages(frame, function () {
         if (frame.discarded) return;
-        direction.AdjustFrameSize(frame);
+        FrameDirection(frame).AdjustFrameSize(frame);
         CaptureImageNaturalSize(frame);
         ApplyPagedFrame(frame, isPosRate, pos, selector);
         RefreshImageSpread(frame);

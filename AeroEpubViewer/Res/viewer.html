@@ -94,6 +94,7 @@
             return null;
         }
         direction_rtl.AdjustFrameSize = function (f) {
+            if (AdjustMismatchFrameSize(f)) return;
             if (IsImageOnlyPage(f.contentDocument)) {
                 f.imagePage = true;
                 let img = f.contentDocument.querySelector("img,svg");
@@ -102,7 +103,7 @@
                     f.imageSizeWait = true;
                     img.addEventListener("load", function () {
                         if (f.discarded) return;
-                        direction.AdjustFrameSize(f);
+                        FrameDirection(f).AdjustFrameSize(f);
                         if (paged) {
                             if (typeof ApplyPagedFrame === "function") ApplyPagedFrame(f, false, 0, null);
                             if (typeof TryFinishSpreadJump === "function") TryFinishSpreadJump();
@@ -161,7 +162,11 @@ transform-origin: 50vw; \
 #measure_container>div{position:fixed;height:1vh;width:1vh;bottom:6vh;border-radius:0.3vh;}\
 .scrollBarChapterName{box-shadow: -0.1em -0.1em 0.3em -0.1em #808080, 0.05em -0.1em 0.3em -0.1em #808080;width: auto;display: inline-block;padding-left:0 0.2em 0 0.2em;}\
 ";
-        direction_rtl.style = "iframe{height:90vh;top:2vh;}" + chromeBottomBar.replace("transform-origin: 50vw;", "transform-origin: 50vw; transform: rotate(180deg);");
+        var frameBaseStyle = "\
+iframe.vertical-frame{height:90vh;top:2vh;}\
+iframe.horizontal-frame{width:100vw;left:0;min-height:90vh;top:2vh;}\
+";
+        direction_rtl.style = frameBaseStyle + chromeBottomBar.replace("transform-origin: 50vw;", "transform-origin: 50vw; transform: rotate(180deg);");
         direction_rtl.injectStyle = "body{height:100vh;min-width:66vh;writing-mode:vertical-rl;-webkit-writing-mode:vertical-rl;} img, svg {max-height:100%;max-width:66vh;}";
         direction_rtl.GetChromeLength = function () { return window.innerWidth; };
         direction_rtl.SetChromePos = function (e, px) { e.style.right = px + "px"; e.style.left = "auto"; e.style.top = "auto"; };
@@ -173,6 +178,7 @@ transform-origin: 50vw; \
         direction_default.GetElementPos = function (e, f) { return e.getBoundingClientRect().top; }
         direction_default.GetWindowLength = function () { return window.innerHeight; }
         direction_default.AdjustFrameSize = function (f) {
+            if (AdjustMismatchFrameSize(f)) return;
             if (IsImageOnlyPage(f.contentDocument)) {
                 f.imagePage = true;
                 let img = f.contentDocument.querySelector("img,svg");
@@ -181,7 +187,7 @@ transform-origin: 50vw; \
                     f.imageSizeWait = true;
                     img.addEventListener("load", function () {
                         if (f.discarded) return;
-                        direction.AdjustFrameSize(f);
+                        FrameDirection(f).AdjustFrameSize(f);
                         if (paged) {
                             if (typeof ApplyPagedFrame === "function") ApplyPagedFrame(f, false, 0, null);
                             if (typeof TryFinishSpreadJump === "function") TryFinishSpreadJump();
@@ -217,12 +223,70 @@ transform-origin: 50vw; \
             }
             return 0;
         }
-        direction_default.style = "iframe{width:100vw;left:0;min-height:90vh;top:2vh;}" + chromeBottomBar;
+        direction_default.style = frameBaseStyle + chromeBottomBar;
         direction_default.injectStyle = "body{width:100vw;max-width:100vw;box-sizing:border-box;padding:0;writing-mode:horizontal-tb;-webkit-writing-mode:horizontal-tb;} img, svg {max-width:100%;max-height:100%;}";
         direction_default.GetChromeLength = function () { return window.innerWidth; };
         direction_default.SetChromePos = function (e, px) { e.style.left = px + "px"; e.style.right = "auto"; e.style.top = "auto"; };
         direction_default.SetChromeLength = function (e, px) { e.style.width = px + "px"; e.style.height = ""; };
         direction_default.GetChromeEventPercent = function (e) { return e.clientX / (window.innerWidth || 1); };
+
+        // 每一頁的排版方向由頁面自己的 html/body class 決定：
+        // 有 vrtl 就是直排；有 hltr 或完全未指定則為橫排。
+        // 圖片／固定版面頁本身沒有書寫方向，沿用書本整體的翻頁方向。
+        function IsImageLayoutFrame(frame) {
+            return !!(frame && (frame.syntheticSpread || frame.imagePage));
+        }
+        function FrameGlobalVertical() {
+            return direction === direction_rtl;
+        }
+        function AreAxesMismatched(frame) {
+            if (paged || !frame || IsImageLayoutFrame(frame)) return false;
+            return !!frame.vertical !== FrameGlobalVertical();
+        }
+        function FrameDirection(frame) {
+            if (IsImageLayoutFrame(frame)) return direction;
+            return (frame && frame.vertical) ? direction_rtl : direction_default;
+        }
+        function FrameLayoutVertical(frame) {
+            if (IsImageLayoutFrame(frame)) return FrameGlobalVertical();
+            if (!paged && AreAxesMismatched(frame)) return FrameGlobalVertical();
+            return !!(frame && frame.vertical);
+        }
+        function ApplyFrameClass(frame) {
+            if (!frame || !frame.classList) return;
+            var vertical = FrameLayoutVertical(frame);
+            frame.classList.toggle("vertical-frame", vertical);
+            frame.classList.toggle("horizontal-frame", !vertical);
+        }
+        function SetFrameVertical(frame, vertical) {
+            if (!frame) return;
+            frame.vertical = !!vertical;
+            ApplyFrameClass(frame);
+        }
+        function DetectFrameVertical(frame) {
+            try {
+                var doc = frame.contentDocument;
+                var root = doc && doc.documentElement;
+                var body = doc && doc.body;
+                var rootCls = " " + ((root && (root.getAttribute ? root.getAttribute("class") : root.className)) || "") + " ";
+                var bodyCls = " " + ((body && (body.getAttribute ? body.getAttribute("class") : body.className)) || "") + " ";
+                if (/\bvrtl\b/.test(rootCls) || /\bvrtl\b/.test(bodyCls)) return true;
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+        function AdjustMismatchFrameSize(frame) {
+            if (!AreAxesMismatched(frame)) return false;
+            if (FrameGlobalVertical()) {
+                frame.style.width = window.innerWidth + "px";
+                frame.style.height = "90vh";
+            } else {
+                frame.style.width = "100vw";
+                frame.style.height = Math.round(window.innerHeight * 0.9) + "px";
+            }
+            return true;
+        }
 
         ScreenTest();
         var direction = direction_default;
@@ -243,6 +307,9 @@ transform-origin: 50vw; \
             spreadMates = BuildSpreadMates();
             if (typeof RefreshScrollBarMax === "function") RefreshScrollBarMax();
             document.direction = direction;
+            document.direction_rtl = direction_rtl;
+            document.direction_default = direction_default;
+            document.directionVertical = direction === direction_rtl;
             document.paged = paged;
             document.dualPage = dualPage;
             console.log("Init start=" + start + " pos=" + posRate + " selector=" + selector + " paged=" + paged + " dual=" + dualPage);
@@ -295,6 +362,7 @@ transform-origin: 50vw; \
             page.spread = (spreadList && spreadList[urlIndex]) || "";
             page.pendingLoad = true;
             page.imagePage = !!(document.bookFixedLayout || (page.spread && page.spread.indexOf("pre-paginated") >= 0));
+            SetFrameVertical(page, direction === direction_rtl);
             page.style.visibility = "hidden";
             if (urlIndex == 0) page.firstFrame = true; else page.firstFrame = false;
             if (urlIndex == urlList.length - 1) page.lastFrame = true; else page.lastFrame = false;
@@ -302,19 +370,20 @@ transform-origin: 50vw; \
             page.scrolling = "no";
             page.frameBorder = "0";
             page.src = urlList[urlIndex] + "?page&g=" + (document.bookGen || 0);
-            direction.SetPosStyle(page);
+            FrameDirection(page).SetPosStyle(page);
             page.onload = function () {
                 if (page.discarded) return;
                 try {
-                    direction.AdjustFrameSize(page);
                     if (IsImageOnlyPage(page.contentDocument) || document.bookFixedLayout || (page.spread && page.spread.indexOf("pre-paginated") >= 0)) page.imagePage = true;
+                    SetFrameVertical(page, DetectFrameVertical(page));
+                    FrameDirection(page).AdjustFrameSize(page);
                     // Image-only reflowable pages are not known when Init builds the mate table.
                     // Rebuild it after each frame reveals its actual page kind.
                     if (typeof BuildSpreadMates === "function") spreadMates = BuildSpreadMates();
                     if (typeof RefreshScrollBarMax === "function") RefreshScrollBarMax();
                     let bodyComputedStyle = page.contentWindow.getComputedStyle(page.contentDocument.body, null);
                     let wm = bodyComputedStyle.getPropertyValue("writing-mode");
-                    if (direction == direction_rtl && wm != "vertical-rl") {
+                    if (page.vertical && wm != "vertical-rl") {
                         if (page.offsetHeight < page.contentDocument.documentElement.scrollHeight) {
                             console.log("Need Pagebreak");
                             //PageBreak_Rtl(page, page.contentDocument.documentElement.scrollHeight);

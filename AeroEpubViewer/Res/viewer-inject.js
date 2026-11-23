@@ -1,5 +1,57 @@
 ﻿var PD = this.parent.document;
+function PageIsVertical() {
+    var els = [document.documentElement, document.body];
+    for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (!el || !el.classList) continue;
+        if (el.classList.contains("vrtl")) return true;
+    }
+    return false;
+}
+function IsImageOnlyDocument() {
+    if (!document.body) return false;
+    var images = document.body.querySelectorAll("img");
+    var svgs = document.body.querySelectorAll("svg");
+    if (images.length + svgs.length != 1) return false;
+    return VisibleTextOnly() === "";
+}
+var pageVertical = PageIsVertical();
+var pageIsPaged = (typeof PD.paged === "undefined") ? true : !!PD.paged;
+var parentVertical = !!PD.directionVertical;
+var pageAxisMismatch = !pageIsPaged && pageVertical !== parentVertical && !IsImageOnlyDocument();
+var pageSelfScroll = pageAxisMismatch;
+function ScrollSelfBy(delta) {
+    if (!delta) return false;
+    var se = document.scrollingElement || document.documentElement || document.body;
+    if (!se) return false;
+    var x0 = se.scrollLeft, y0 = se.scrollTop;
+    if (pageVertical) se.scrollLeft = x0 - delta;
+    else se.scrollTop = y0 + delta;
+    return se.scrollTop !== y0 || se.scrollLeft !== x0;
+}
+function HandleSelfScrollKey(e) {
+    var step = 48;
+    var pageStep = Math.round(window.innerHeight * 0.8);
+    var delta = 0;
+    if (e.key === "ArrowDown") delta = step;
+    else if (e.key === "ArrowUp") delta = -step;
+    else if (e.key === "PageDown" || e.key === " ") delta = pageStep;
+    else if (e.key === "PageUp") delta = -pageStep;
+    else if (pageVertical && e.key === "ArrowLeft") delta = step;
+    else if (pageVertical && e.key === "ArrowRight") delta = -step;
+    else return false;
+    if (!ScrollSelfBy(delta)) return false;
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    return true;
+}
 function OnFrameWheel(e) {
+    if (pageSelfScroll && ScrollSelfBy(e.deltaY || 0)) {
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        if (PD.EnsureViewerFocus) PD.EnsureViewerFocus();
+        return false;
+    }
     if (e.preventDefault) e.preventDefault();
     if (e.stopPropagation) e.stopPropagation();
     PD.Wheel(e);
@@ -11,7 +63,10 @@ document.addEventListener("wheel", OnFrameWheel, { passive: false, capture: true
 document.addEventListener("mousewheel", OnFrameWheel, { passive: false, capture: true });
 window.onmousewheel = OnFrameWheel;
 document.onmousewheel = OnFrameWheel;
-document.addEventListener("keydown", function (e) { PD.keydown(e); });
+document.addEventListener("keydown", function (e) {
+    if (pageSelfScroll && HandleSelfScrollKey(e)) return;
+    PD.keydown(e);
+});
 document.addEventListener('contextmenu', event => event.preventDefault());
 
 [].forEach.call(document.body.querySelectorAll('[href]'), function (a) {
@@ -53,11 +108,17 @@ var fontSizeStyle = document.createElement("style");
 fontSizeStyle.innerHTML = "html{font-size:" + PD.userSettings.bookFontSize + "px}";
 document.head.appendChild(fontSizeStyle);
 var style = document.createElement("style");
-style.innerHTML = PD.direction.injectStyle;
+var pageDirection = (pageVertical ? PD.direction_rtl : PD.direction_default) || PD.direction;
+style.innerHTML = pageDirection.injectStyle;
 document.head.appendChild(style);
 var themeStyle = document.createElement("style");
 themeStyle.innerHTML = PD.theme.frameStyle;
 document.head.appendChild(themeStyle);
+if (pageAxisMismatch) {
+    var axisStyle = document.createElement("style");
+    axisStyle.innerHTML = "html,body{overflow:auto !important;}";
+    document.head.appendChild(axisStyle);
+}
 FixImageOnlyPage();
 document.addEventListener("touchstart", function (e) { PD.OnFrameTouchStart(e.touches[0].screenX, e.touches[0].screenY); });
 document.addEventListener("touchend", function (e) { PD.OnFrameTouchEnd(); });

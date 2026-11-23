@@ -99,6 +99,13 @@ function IsTypingTarget(el) {
     var tag = (el.tagName || "").toUpperCase();
     return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
+// 分頁模式下，按鍵與手勢方向應跟隨目前頁面的排版方向；
+// 捲動模式的整條頁面鏈仍以書本整體方向為準。
+function ControlDirection(usePaged) {
+    if (usePaged && typeof currentFrame !== "undefined" && currentFrame && typeof FrameDirection === "function")
+        return FrameDirection(currentFrame);
+    return direction;
+}
 document.keydown = function (e) {
     var zoom = document.getElementById("imageZoom");
     if (zoom && zoom.style.display === "block") {
@@ -166,7 +173,7 @@ document.keydown = function (e) {
             case "ArrowLeft":
             case "ArrowRight":
             case "ArrowUp":
-                let d = direction.KeyToDirection(e.key);
+                let d = ControlDirection(paged).KeyToDirection(e.key);
                 if (paged) { if (d) TurnPage(d); }
                 else Scroll(d * 30);
                 break;
@@ -178,22 +185,23 @@ window.addEventListener("keydown", document.keydown, true);
 var touchPos = -1;
 var touchStart = -1;
 document.OnFrameTouchStart = function (x, y) {
-    touchPos = direction.GetEffective(x, y);
+    touchPos = ControlDirection(paged).GetEffective(x, y);
     touchStart = touchPos;
 };
 document.OnFrameTouchMove = function (x, y) {
-    let d = direction.GetEffective(x, y);
+    let gd = ControlDirection(paged);
+    let d = gd.GetEffective(x, y);
     if (paged) {
         touchPos = d;
         return;
     }
-    let delta = direction.GetDelta(touchPos, d);
+    let delta = gd.GetDelta(touchPos, d);
     Scroll(delta);
     touchPos = d;
 };
 document.OnFrameTouchEnd = function () {
     if (paged && touchStart != -1 && touchPos != -1) {
-        let delta = direction.GetDelta(touchStart, touchPos);
+        let delta = ControlDirection(true).GetDelta(touchStart, touchPos);
         if (Math.abs(delta) > 40) TurnPage(delta > 0 ? 1 : -1);
     }
     touchPos = -1;
