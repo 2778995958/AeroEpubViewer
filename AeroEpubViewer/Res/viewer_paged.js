@@ -24,11 +24,17 @@ function CopyRect(b) {
 function UnionBox(a, b) {
     if (!a) return b;
     if (!b) return a;
+    var left = Math.min(a.left, b.left);
+    var right = Math.max(a.right, b.right);
+    var top = Math.min(a.top, b.top);
+    var bottom = Math.max(a.bottom, b.bottom);
     return {
-        left: Math.min(a.left, b.left),
-        right: Math.max(a.right, b.right),
-        top: Math.min(a.top, b.top),
-        bottom: Math.max(a.bottom, b.bottom)
+        left: left,
+        right: right,
+        top: top,
+        bottom: bottom,
+        width: right - left,
+        height: bottom - top
     };
 }
 
@@ -54,6 +60,20 @@ function ClosestRuby(node) {
         node = node.parentNode;
     }
     return null;
+}
+
+// 注音（rt/rp）會落在 ruby 元素的外框之外，若只取 ruby 本身的外框，
+// 分頁裁切就可能把注音切掉（橫排書的書名注音被削掉上半部就是這個原因）。
+function RubyInkRect(ruby) {
+    var r = ruby.getBoundingClientRect();
+    if (!r) return r;
+    var annots = ruby.querySelectorAll("rt, rp");
+    for (var i = 0; i < annots.length; i++) {
+        var b = annots[i].getBoundingClientRect();
+        if (b.width < 0.5 && b.height < 0.5) continue;
+        r = UnionBox(r, b);
+    }
+    return r;
 }
 
 function FitImagesToPage(frame, avail, rtl) {
@@ -105,6 +125,9 @@ function CollectAtoms(frame, avail, rtl, fw, fh) {
                 var rec = CopyRect(rb);
                 rec.isRuby = true;
                 rec.charOffset = charOffset;
+                // 注音會超出 ruby 外框，分頁時另外用它把頁面範圍補回來，
+                // 但不參與行距（pitch）與行叢集的計算。
+                rec.ink = RubyInkRect(ruby);
                 out.push(rec);
             }
             var base = ruby.textContent || "";
@@ -382,6 +405,40 @@ function MakePage(box, strips, i0, i1, rtl) {
     };
 }
 
+// 把注音等「溢出字面外框」的裝飾納入頁面範圍，避免分頁裁切削掉注音。
+// 只在裁切方向的兩端擴張，且不影響既有的分頁數量。
+function ExpandPagesToInk(pages, strips, rtl, fw, fh) {
+    var i, k, a;
+    for (i = 0; i < pages.length; i++) {
+        var pg = pages[i];
+        var i0 = (typeof pg.i0 === "number") ? pg.i0 : 0;
+        var i1 = (typeof pg.i1 === "number") ? pg.i1 : strips.length - 1;
+        for (k = i0; k <= i1 && k < strips.length; k++) {
+            var atoms = strips[k] && strips[k].atoms;
+            if (!atoms) continue;
+            for (a = 0; a < atoms.length; a++) {
+                var ink = atoms[a].ink;
+                if (!ink) continue;
+                if (rtl) {
+                    pg.left = Math.min(pg.left, Math.floor(ink.left));
+                    pg.right = Math.max(pg.right, Math.ceil(ink.right));
+                } else {
+                    pg.top = Math.min(pg.top, Math.floor(ink.top));
+                    pg.bottom = Math.max(pg.bottom, Math.ceil(ink.bottom));
+                }
+            }
+        }
+        if (rtl) {
+            pg.left = Math.max(0, pg.left);
+            pg.right = Math.min(fw, pg.right);
+        } else {
+            pg.top = Math.max(0, pg.top);
+            pg.bottom = Math.min(fh, pg.bottom);
+        }
+    }
+    return pages;
+}
+
 function FullFramePage(frame) {
     var w = frame.offsetWidth || 1;
     var h = frame.offsetHeight || 1;
@@ -427,6 +484,8 @@ function BuildPageTable(frame) {
         console.log("paged chapter " + frame.urlIndex + ": recluster by pitch grid, strips=" + strips.length);
     }
     var pages = PackCompleteStrips(strips, avail, rtl);
+    pages = MakePagesDisjoint(pages, rtl);
+    pages = ExpandPagesToInk(pages, strips, rtl, fw, fh);
     pages = MakePagesDisjoint(pages, rtl);
     console.log("paged chapter " + frame.urlIndex + ": atoms=" + atoms.length + " strips=" + strips.length + " pages=" + pages.length + " avail=" + avail + " pitch=" + pitch.toFixed(1) + " frame=" + fw + "x" + fh);
     if (!pages.length) pages = [FullFramePage(frame)];

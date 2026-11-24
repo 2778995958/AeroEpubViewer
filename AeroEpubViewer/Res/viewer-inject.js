@@ -1,10 +1,25 @@
 ﻿var PD = this.parent.document;
+function ElementWritingMode(el) {
+    if (!el || !window.getComputedStyle) return "";
+    try {
+        var cs = window.getComputedStyle(el, null);
+        return (cs.writingMode || "") + " " + (cs.getPropertyValue("writing-mode") || "");
+    } catch (e) {
+        return "";
+    }
+}
 function PageIsVertical() {
     var els = [document.documentElement, document.body];
-    for (var i = 0; i < els.length; i++) {
-        var el = els[i];
+    var i, el;
+    for (i = 0; i < els.length; i++) {
+        el = els[i];
         if (!el || !el.classList) continue;
         if (el.classList.contains("vrtl")) return true;
+    }
+    // 有些書（例如由 KFX 轉出的 EPUB）不用 vrtl/hltr 類別，
+    // 而是直接在 CSS 指定 writing-mode，因此再檢查實際算出的書寫方向。
+    for (i = 0; i < els.length; i++) {
+        if (/vertical/.test(ElementWritingMode(els[i]))) return true;
     }
     return false;
 }
