@@ -13,6 +13,7 @@ An Epub Viewer on Windows. Using C#, CEFSharp.
 + BookInfo
 + Have a quick view of all images.
 + Search
++ Kindle KFX (`.kfx` / `.kfx-zip` / `.kfxzip`); requires a separately provided `kfx2epub` placed in the `Kfx2Epub` folder (framework-dependent, needs .NET Desktop Runtime 8 or later). This tool is not bundled. Set `Kfx2EpubPath` in `UserSettings\general.txt` to use another location.
 ## 功能
 + 支持```page-progress-direction```值```rtl``` (直排)
 + 支持EPUB2/EPUB3目录(点左上角打开目录)
@@ -25,6 +26,7 @@ An Epub Viewer on Windows. Using C#, CEFSharp.
 + 书籍信息
 + 速览插图
 + 搜索
++ 支援 Kindle KFX（`.kfx` / `.kfx-zip` / `.kfxzip`）；需自行取得 `kfx2epub` 並放到 `Kfx2Epub` 資料夾（framework-dependent 版，需要 .NET Desktop Runtime 8 以上）。本程式不內附此工具。若放在其他位置，請在 `UserSettings\general.txt` 設定 `Kfx2EpubPath`。
 
 ## 细节
 ### 搜索

@@ -10,6 +10,8 @@ namespace AeroEpub
 {
     public class EpubFile
     {
+        // .NET Framework 單一 byte[] 的實際上限（2 GiB 減 57 位元組），比 int.MaxValue 略小。
+        const long MaxByteArrayLength = 2147483591L;
         public string filename;
         public string path;
         public List<EpubFileEntry> entries;
@@ -510,17 +512,25 @@ namespace AeroEpub
                                     }
                                     break;
                                 default:
+                                    // byte[] 的實際上限比 int.MaxValue 小一點（2,147,483,591），
+                                    // 超過就算通過舊檢查也配置不出來，因此先擋掉並給出明確訊息。
+                                    if (entry.Length > MaxByteArrayLength)
+                                        throw new EpubErrorException(entry.FullName + "\n檔案大小超過限制（單一檔案上限 2 GB）。");
                                     using (var stm = entry.Open())
-
                                     {
                                         byte[] d = new byte[entry.Length];
-                                        if (entry.Length < int.MaxValue)
+                                        // Stream.Read 允許回傳少於要求的位元組數，必須讀到填滿為止，
+                                        // 否則大檔案可能只讀到一部分就當成完整內容。
+                                        int offset = 0;
+                                        while (offset < d.Length)
                                         {
-                                            stm.Read(d, 0, (int)entry.Length);
-                                            var i = new EpubFileEntry(entry.FullName, d);
-                                            entries.Add(i);
+                                            int read = stm.Read(d, offset, d.Length - offset);
+                                            if (read <= 0)
+                                                throw new EpubErrorException(entry.FullName + "\n檔案資料不完整（預期 " + d.Length + " 位元組，實際讀到 " + offset + " 位元組）。");
+                                            offset += read;
                                         }
-                                        else { throw new EpubErrorException(entry.FullName + "\n檔案大小超過限制。"); }
+                                        var i = new EpubFileEntry(entry.FullName, d);
+                                        entries.Add(i);
                                     }
                                     break;
                             }

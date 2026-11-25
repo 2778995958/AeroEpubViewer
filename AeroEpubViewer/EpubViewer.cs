@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CefSharp;
@@ -241,27 +242,66 @@ namespace AeroEpubViewer
             var form = instance;
             if (ui == null || form == null || ui.IsDisposed || form.IsDisposed) { opening = false; return; }
             opening = true;
-            ui.ExecuteScriptAsync("if(typeof ShowOpenMask==='function')ShowOpenMask();");
+
+            bool kfx = KfxConverter.IsKfx(path);
+            KfxProgressForm progress = null;
+            if (kfx)
+            {
+                progress = new KfxProgressForm(form);
+                progress.Show(form);
+                Application.DoEvents();
+            }
+            else
+            {
+                ui.ExecuteScriptAsync("if(typeof ShowOpenMask==='function')ShowOpenMask();");
+            }
+
             Task.Run(() =>
             {
-                try { return (object)Program.OpenEpubFile(path); }
+                try
+                {
+                    string openPath = Program.PrepareBook(path, progress == null ? null : new Action<int?>(progress.Report), progress == null ? CancellationToken.None : progress.Token);
+                    return (object)Program.OpenEpubFile(openPath);
+                }
                 catch (Exception ex) { return ex; }
             }).ContinueWith(t =>
             {
-                if (form.IsDisposed || ui.IsDisposed) { opening = false; return; }
+                if (form.IsDisposed || ui.IsDisposed)
+                {
+                    if (progress != null && !progress.IsDisposed)
+                    {
+                        // 未完成就丟棄：Dispose 會取消，讓子行程一起結束。
+                        progress.Dispose();
+                    }
+                    opening = false;
+                    return;
+                }
                 form.BeginInvoke((Action)(() =>
                 {
                     try
                     {
+                        if (progress != null)
+                        {
+                            progress.Finish();
+                            if (!progress.IsDisposed) progress.Dispose();
+                            progress = null;
+                        }
                         var result = t.Exception != null ? (object)t.Exception.GetBaseException() : t.Result;
                         var err = result as Exception;
                         if (err != null)
                         {
                             ui.ExecuteScriptAsync("if(typeof HideOpenMask==='function')HideOpenMask();");
+                            // 使用者主動取消：安靜回到原狀，不顯示錯誤。
+                            if (err is OperationCanceledException) return;
                             Program.ShowEpubError(path, err is EpubErrorException || err is IOException ? err.Message : err.ToString());
                             return;
                         }
                         var book = (EpubFile)result;
+                        if (kfx)
+                        {
+                            book.path = path;
+                            book.filename = Path.GetFileNameWithoutExtension(path);
+                        }
                         SearchService.Stop();
                         Program.epub = book;
                         bookGen++;

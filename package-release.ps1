@@ -46,10 +46,11 @@ if (Test-Path -LiteralPath $stageDir) {
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 
 # 只複製執行期需要的檔案，排除偵錯檔、XML 文件、記錄檔與使用者設定。
+# Cache 是執行時產生的 KFX 轉檔快取；Kfx2Epub 由使用者自行放入，都不打包。
 $robocopyArgs = @(
     $binDir, $stageDir, "/E", "/NFL", "/NDL", "/NJH", "/NJS", "/NP",
     "/XF", "*.pdb", "*.xml", "debug.log", "*.log",
-    "/XD", "UserSettings"
+    "/XD", "UserSettings", "Cache", "Kfx2Epub"
 )
 & robocopy @robocopyArgs | Out-Null
 if ($LASTEXITCODE -ge 8) {

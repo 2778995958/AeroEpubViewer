@@ -21,6 +21,14 @@ namespace AeroEpubViewer
         public static string uiLanguage = "ja";
         public static bool paged = true;
 
+        //kfx cache
+        public static bool kfxCacheEnabled = true;
+        public static int kfxCacheMaxMB = 1024;
+        public static int kfxCacheDays = 7;
+
+        //kfx converter
+        public static string kfx2EpubPath = "";
+
         //font
         public static int bookFontSize = 26;
         public static Dictionary<string, string[]> fontFamilySettings = new Dictionary<string, string[]>();
@@ -47,6 +55,10 @@ namespace AeroEpubViewer
         {
             bool hasFontSetting = File.Exists(fontSetting);
             bool hasGeneralSetting = File.Exists(generalSetting);
+            bool hasKfxCacheEnabled = false;
+            bool hasKfxCacheMaxMB = false;
+            bool hasKfxCacheDays = false;
+            bool hasKfx2EpubPath = false;
 
             if (hasFontSetting)
             {
@@ -92,6 +104,22 @@ namespace AeroEpubViewer
                                 case "Paged":
                                     if (!bool.TryParse(para[1], out paged)) paged = true;
                                     break;
+                                case "KfxCacheEnabled":
+                                    if (!bool.TryParse(para[1], out kfxCacheEnabled)) kfxCacheEnabled = true;
+                                    hasKfxCacheEnabled = true;
+                                    break;
+                                case "KfxCacheMaxMB":
+                                    if (!int.TryParse(para[1], out kfxCacheMaxMB) || kfxCacheMaxMB <= 0) kfxCacheMaxMB = 1024;
+                                    hasKfxCacheMaxMB = true;
+                                    break;
+                                case "KfxCacheDays":
+                                    if (!int.TryParse(para[1], out kfxCacheDays) || kfxCacheDays <= 0) kfxCacheDays = 7;
+                                    hasKfxCacheDays = true;
+                                    break;
+                                case "Kfx2EpubPath":
+                                    kfx2EpubPath = para[1];
+                                    hasKfx2EpubPath = true;
+                                    break;
                             }
                     }
             }
@@ -111,6 +139,22 @@ namespace AeroEpubViewer
 
             if (!hasFontSetting || !hasGeneralSetting)
                 WriteSettings();
+            else if (!hasKfxCacheEnabled || !hasKfxCacheMaxMB || !hasKfxCacheDays || !hasKfx2EpubPath)
+                AppendMissingKfxSettings(hasKfxCacheEnabled, hasKfxCacheMaxMB, hasKfxCacheDays, hasKfx2EpubPath);
+        }
+        static void AppendMissingKfxSettings(bool hasEnabled, bool hasMaxMB, bool hasDays, bool hasPath)
+        {
+            try
+            {
+                using (var writer = new StreamWriter(generalSetting, true))
+                {
+                    if (!hasEnabled) writer.WriteLine($"KfxCacheEnabled, {kfxCacheEnabled}");
+                    if (!hasMaxMB) writer.WriteLine($"KfxCacheMaxMB, {kfxCacheMaxMB}");
+                    if (!hasDays) writer.WriteLine($"KfxCacheDays, {kfxCacheDays}");
+                    if (!hasPath) writer.WriteLine($"Kfx2EpubPath, {kfx2EpubPath}");
+                }
+            }
+            catch (Exception) { }
         }
         public static void WriteSettings()
         {
@@ -123,6 +167,10 @@ namespace AeroEpubViewer
                 writer.WriteLine($"WarmColor, {warmColor}");
                 writer.WriteLine($"UiLanguage, {uiLanguage}");
                 writer.WriteLine($"Paged, {paged}");
+                writer.WriteLine($"KfxCacheEnabled, {kfxCacheEnabled}");
+                writer.WriteLine($"KfxCacheMaxMB, {kfxCacheMaxMB}");
+                writer.WriteLine($"KfxCacheDays, {kfxCacheDays}");
+                writer.WriteLine($"Kfx2EpubPath, {kfx2EpubPath}");
             }
 
             // Write font settings

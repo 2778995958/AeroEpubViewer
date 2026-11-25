@@ -145,6 +145,9 @@
     <Compile Include="HtmlHack.cs" />
     <Compile Include="ImageArchive.cs" />
     <Compile Include="ImageHack.cs" />
+    <Compile Include="KfxCache.cs" />
+    <Compile Include="KfxConverter.cs" />
+    <Compile Include="KfxProgressForm.cs" />
     <Compile Include="SearchService.cs" />
     <Compile Include="SpecialPageService.cs" />
     <Compile Include="Program.cs" />
